@@ -1,7 +1,13 @@
 
 
-dude(  )  { 
+empty() {
+}
+
+dude( n ) int n; { 
   printf("B: %d\n", -1);
+}
+dude2( n,m ) int n;int m; { 
+  printf("B: %d %d\n", n, m);
 }
 
 bob( int a )  { 
@@ -24,7 +30,9 @@ main() {
 
   int a;
 
-  dude();
+  empty();
+  dude(5);
+  dude2(5,6);
   bob(5);
   carl(6,7);
   dan('B');

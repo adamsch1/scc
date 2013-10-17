@@ -259,6 +259,7 @@ int  nxtlab,    /* next avail label # */
   mainflg,  /* output is to be first asm file  gtf 4/9/80 */
   saveout,  /* holds output ptr when diverted to console     */
       /*          gtf 7/16/80 */
+  kandr,    /* Current function decl K&R style? */
   fnstart,  /* line# of start of current fn.  gtf 7/2/80 */
   lineno,    /* line# in current file    gtf 7/2/80 */
   infunc,    /* "inside FUNCTION" flag    gtf 7/2/80 */
@@ -694,29 +695,56 @@ newfunc() {
 
  
   /* Parse twice, once for arg count so second pass we can pass proper 
-     stack offsets in emitted asm code */ 
+     stack offsets in emitted asm code - SA */ 
   tidx=lptr;
   blanks();
-  while( streq(line+lptr,")") == 0 ) {
+  
+  /* Assume K&R style  - SA */
+  kandr = 1;
+  while( match(")" ) == 0 ) {
+    if( match("int",3) || match("char", 4) ) {
+      /* Found a type - we now treat this function as a non K&R style */
+      kandr = 0;
+    }
     if( streq(line+lptr, ",") ) {
+      /* Still our goal is to find the number of arguments  */
       argstk += 4;
     }
     lptr++;
     if( argstk == 0 ) argstk+=4;
   }
-  /* Record stack depth based on #o f parameters */
+  /* Record stack depth based on # of parameters */
   argtop = argstk;
 
-  /* Reset lptr so we can reparse */
-  lptr=tidx;  
-  while(match(")")==0) {
-    if( amatch("int",3) ) {
-      getarg(CINT);
-    } else if( amatch("char", 4) ) {
-      getarg(CINT);
-    } else if(streq(line+lptr,")")==0) {
-      if(match(",")==0) error("expected comma");
-    }
+  /* If we are not K&R re-parse the params, we needed an arg count for this 
+     parse code to work however so we are doing it twice */
+  if( !kandr ) {
+      /* Reset lptr so we can reparse - SA */
+      lptr=tidx;  
+      while(match(")")==0) {
+        if( amatch("int",3) ) {
+          getarg(CINT);
+        } else if( amatch("char", 4) ) {
+          getarg(CINT);
+        } else if(streq(line+lptr,")")==0) {
+          if(match(",")==0) { 
+            error("expected comma");
+            break;
+          }
+        }
+      }
+  } else {
+      /* We are K&R - parse arg name and types after the ) and before the { */
+      locptr=STARTLOC;  /* "clear" local symbol table*/ 
+      Zsp=0;      /* preset stack ptr */
+      argtop=argstk;
+      while(argstk)  {
+        /* now let user declare what TYPEs of things */
+        /*  those arguments were */
+        if(amatch("char",4)){getarg(CCHAR);ns();}
+        else if(amatch("int",3)){getarg(CINT);ns();}
+        else{error("wrong number args");break;}
+      }
   }
 #if 0
   while(match(")")==0)  {
@@ -731,8 +759,7 @@ newfunc() {
     }
     if(endst())break;
   }
-  locptr=STARTLOC;  /* "clear" local symbol table*/
-  Zsp=0;      /* preset stack ptr */
+  locptr=STARTLOC;  /* "clear" local symbol table*/ Zsp=0;      /* preset stack ptr */
   argtop=argstk;
   while(argstk)
     /* now let user declare what TYPEs of things */
@@ -782,11 +809,14 @@ getarg(t)    /* t = CCHAR or CINT */
       }
     addloc(n,j,t,8+argtop-argstk);
     argstk=argstk-4;  /* cnt down *//*modified by E.V.*/
-//    if(endst())return;
-    //if(match(",")==0)error("expected comma");
+    /* K&R handling conditionally - SA */
+    if( kandr ) {
+      if(endst())return;
+      if(match(",")==0)error("expected comma"); 
+    }
     return;
     }
-  }
+}
 /*          */
 /*  Statement parser    */
 /*          */
