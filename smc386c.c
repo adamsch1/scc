@@ -277,9 +277,7 @@ int  *iptr;    /* work ptr to any int buffer */
 /*          */
 /*  Compiler begins execution here  */
 /*          */
-main(/*argc,argv*/)
-   /*int argc;char*argv[];*/
-  {
+main( int argc, char *argv[]) {
   glbptr=STARTGLB;  /* clear global symbols */
   locptr=STARTLOC;  /* clear local symbols */
   wqptr=wq;    /* clear while queue */
@@ -307,6 +305,7 @@ main(/*argc,argv*/)
   quote[0]='"';    /* fake a quote literal */
   currfn=NULL;  /* no FUNCTION yet      gtf 7/2/80 */
   cmode=1;  /* enable preprocessing */
+
   /*        */
   /*  compiler body    */
   /*        */
@@ -440,7 +439,7 @@ ask() {
   pl(LINE);
   nl();nl();
   ctext=1;    /* assume yes */
-    glbflag=1;  /* define globals */
+  glbflag=1;  /* define globals */
   mainflg=1;  /* first file to assembler */
   nxtlab =0;  /* start numbers at lowest possible */
   errstop=0;
@@ -734,6 +733,7 @@ newfunc() {
         }
       }
   } else {
+      /* Refill buffer */
       blanks();
       /* We are K&R - parse arg name and types after the ) and before the { */
       locptr=STARTLOC;  /* "clear" local symbol table*/ 
