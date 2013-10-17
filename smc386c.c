@@ -779,9 +779,9 @@ statement()
   else if(amatch("while",5))
     {dowhile();lastst=STWHILE;}
   else if(amatch("for",3))
-    {dofor();lastst=dofor;}
+    {dofor();lastst=STFOR;}
   else if(amatch("do", 2))
-    {dodo();lastst=dodo;}
+    {dodo();lastst=STDO;}
   else if(amatch("return",6))
     {doreturn();ns();lastst=STRETURN;}
   else if(amatch("break",5))
