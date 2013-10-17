@@ -652,27 +652,29 @@ needsub()
 /*          */
 /* Called from "parse" this routine tries to make a FUNCTION */
 /*  out of what follows.  */
-newfunc()
-  {
+newfunc() {
   char n[NAMESIZE];  /* ptr => currfn,  gtf 7/16/80 */
-  if (symname(n)==0)
-    {error("illegal FUNCTION or declaration");
+  int  tidx;
+  if (symname(n)==0) {
+    error("illegal FUNCTION or declaration");
     kill();  /* invalidate line */
     return;
-    }
+  }
   fnstart=lineno;    /* remember where fn began  gtf 7/2/80 */
   infunc=1;    /* note, in FUNCTION now.  gtf 7/16/80 */
-  if(currfn=findglb(n))  /* already in symbol table ? */
-    {if(currfn[IDENT]!=FUNCTION)multidef(n);
+  /* already in symbol table ? */
+  if(currfn=findglb(n))  {
+    if(currfn[IDENT]!=FUNCTION)multidef(n);
       /* already VARIABLE by that NAME */
     else if(currfn[OFFSET]==FUNCTION)multidef(n);
       /* already FUNCTION by that NAME */
     else currfn[OFFSET]=FUNCTION;
       /* otherwise we have what was earlier*/
       /*  assumed to be a FUNCTION */
-    }
-  /* if not in table, define as a FUNCTION now */
-  else currfn=addglb(n,FUNCTION,CINT,FUNCTION);
+  } else {
+    /* if not in table, define as a FUNCTION now */
+    currfn=addglb(n,FUNCTION,CINT,FUNCTION);
+  }
 
   toconsole();          /* gtf 7/16/80 */
   /*outstr("====== "); outstr(currfn+NAME); outstr("()"); nl();*/
@@ -686,18 +688,49 @@ newfunc()
   ot(".TYPE");tab();outname(n);outasm(",@function");nl();
   outname(n);col();nl();  /* print FUNCTION NAME */
   argstk=0;    /* init arg count */
-  while(match(")")==0)  /* then count args */
+
+  locptr=STARTLOC;  /* "clear" local symbol table*/
+  Zsp=0;      /* preset stack ptr */
+
+ 
+  /* Parse twice, once for arg count so second pass we can pass proper 
+     stack offsets in emitted asm code */ 
+  tidx=lptr;
+  blanks();
+  while( streq(line+lptr,")") == 0 ) {
+    if( streq(line+lptr, ",") ) {
+      argstk += 4;
+    }
+    lptr++;
+    if( argstk == 0 ) argstk+=4;
+  }
+  /* Record stack depth based on #o f parameters */
+  argtop = argstk;
+
+  /* Reset lptr so we can reparse */
+  lptr=tidx;  
+  while(match(")")==0) {
+    if( amatch("int",3) ) {
+      getarg(CINT);
+    } else if( amatch("char", 4) ) {
+      getarg(CINT);
+    } else if(streq(line+lptr,")")==0) {
+      if(match(",")==0) error("expected comma");
+    }
+  }
+#if 0
+  while(match(")")==0)  {
+    /* then count args */
     /* any legal NAME bumps arg count */
-    {if(symname(n))argstk=argstk+4;/*modified by E.V.*/
+    if(symname(n))argstk=argstk+4;/*modified by E.V.*/
     else{error("illegal argument NAME");junk();}
     blanks();
     /* if not closing paren, should be comma */
-    if(streq(line+lptr,")")==0)
-      {if(match(",")==0)
-      error("expected comma");
-      }
-    if(endst())break;
+    if(streq(line+lptr,")")==0) {
+      if(match(",")==0) error("expected comma");
     }
+    if(endst())break;
+  }
   locptr=STARTLOC;  /* "clear" local symbol table*/
   Zsp=0;      /* preset stack ptr */
   argtop=argstk;
@@ -708,6 +741,7 @@ newfunc()
     else if(amatch("int",3)){getarg(CINT);ns();}
     else{error("wrong number args");break;}
     }
+#endif
   ol("pushl %ebp");
   ol("movl %esp, %ebp");
   if(statement()!=STRETURN) /* do a statement, but if */
@@ -748,8 +782,9 @@ getarg(t)    /* t = CCHAR or CINT */
       }
     addloc(n,j,t,8+argtop-argstk);
     argstk=argstk-4;  /* cnt down *//*modified by E.V.*/
-    if(endst())return;
-    if(match(",")==0)error("expected comma");
+//    if(endst())return;
+    //if(match(",")==0)error("expected comma");
+    return;
     }
   }
 /*          */
