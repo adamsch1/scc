@@ -702,16 +702,16 @@ newfunc() {
   /* Assume K&R style  - SA */
   kandr = 1;
   while( match(")" ) == 0 ) {
-    if( match("int",3) || match("char", 4) ) {
-      /* Found a type - we now treat this function as a non K&R style */
-      kandr = 0;
-    }
+    /* Found a type? we now treat this function as a non K&R style */
+    if( match("int",3) ) { kandr = 0; }
+    else if( match("char", 4) ) { kandr = 0; }
+
     if( streq(line+lptr, ",") ) {
       /* Still our goal is to find the number of arguments  */
-      argstk += 4;
+      argstk = argstk + 4;
     }
     lptr++;
-    if( argstk == 0 ) argstk+=4;
+    if( argstk == 0 ) argstk = argstk + 4;
   }
   /* Record stack depth based on # of parameters */
   argtop = argstk;
@@ -734,6 +734,7 @@ newfunc() {
         }
       }
   } else {
+      blanks();
       /* We are K&R - parse arg name and types after the ) and before the { */
       locptr=STARTLOC;  /* "clear" local symbol table*/ 
       Zsp=0;      /* preset stack ptr */
@@ -746,29 +747,6 @@ newfunc() {
         else{error("wrong number args");break;}
       }
   }
-#if 0
-  while(match(")")==0)  {
-    /* then count args */
-    /* any legal NAME bumps arg count */
-    if(symname(n))argstk=argstk+4;/*modified by E.V.*/
-    else{error("illegal argument NAME");junk();}
-    blanks();
-    /* if not closing paren, should be comma */
-    if(streq(line+lptr,")")==0) {
-      if(match(",")==0) error("expected comma");
-    }
-    if(endst())break;
-  }
-  locptr=STARTLOC;  /* "clear" local symbol table*/ Zsp=0;      /* preset stack ptr */
-  argtop=argstk;
-  while(argstk)
-    /* now let user declare what TYPEs of things */
-    /*  those arguments were */
-    {if(amatch("char",4)){getarg(CCHAR);ns();}
-    else if(amatch("int",3)){getarg(CINT);ns();}
-    else{error("wrong number args");break;}
-    }
-#endif
   ol("pushl %ebp");
   ol("movl %esp, %ebp");
   if(statement()!=STRETURN) /* do a statement, but if */
@@ -813,8 +791,9 @@ getarg(t)    /* t = CCHAR or CINT */
     if( kandr ) {
       if(endst())return;
       if(match(",")==0)error("expected comma"); 
+    } else {
+      return;
     }
-    return;
     }
 }
 /*          */

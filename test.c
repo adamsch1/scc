@@ -3,6 +3,15 @@
 empty() {
 }
 
+addglb(sname,id,typ,value)
+  char *sname,id,typ;
+  int value;
+{
+
+  printf("%s %c %c %d\n", sname, id, typ, value ); 
+}
+
+
 dude( n ) int n; { 
   printf("B: %d\n", -1);
 }
@@ -31,6 +40,7 @@ main() {
   int a;
 
   empty();
+  addglb("dude",'b', 'c',11);
   dude(5);
   dude2(5,6);
   bob(5);
