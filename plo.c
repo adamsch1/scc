@@ -6,7 +6,7 @@
 typedef enum {ident, number, lparen, rparen, times, slash, plus,
     minus, eql, neq, lss, leq, gtr, geq, callsym, beginsym, semicolon,
     endsym, ifsym, whilesym, becomes, thensym, dosym, constsym, comma,
-    varsym, procsym, period, oddsym, colon, bang} Symbol;
+    varsym, procsym, period, oddsym, colon, bang, ob, cb} Symbol;
 
 struct _rw {
   char *name;
@@ -25,11 +25,15 @@ struct _rw {
   { "odd",   oddsym },
 };
 
+enum { INT, ARRAY };
+
 struct sym_t {
   char name[16];
   int  level;
   int  constant;
   int  zsp;
+  int  type;
+  int  size;
 } table[100];
 int table_count = 0;
 
@@ -61,7 +65,7 @@ void dump()  {
   printf("cc1:\n");
   printf("\t.byte 37,100,10,0\n");
   while( table_count-- > 0 ) {
-    if( !table[table_count].constant ) printf("\t.comm %s,4,4\n", table[ table_count ].name );
+    if( !table[table_count].constant ) printf("\t.comm %s,%d,4\n", table[ table_count ].name, table[table_count].size  );
   }
 }
 
@@ -161,6 +165,8 @@ int lex() {
       if( ch == '=' ) { ch = getchar(); return eql; }
       if( ch == '#' ) { ch = getchar(); return neq; }
       if( ch == '!' ) { ch = getchar(); return bang; }
+      if( ch == '[' ) { ch = getchar(); return ob; }
+      if( ch == ']' ) { ch = getchar(); return cb; }
       if( ch == EOF ) return 0;
       printf("Unrecognzied: %c\n", ch );
       }
@@ -190,7 +196,20 @@ void factor(void) {
         printf("\tleal %d(%%ebp), %%eax\n", p->zsp ); 
         printf("\tmovl (%%eax), %%eax\n") ;
       } else { /* Globals - just a symbol */
-        printf("\tmovl %s, %%eax\n", id );
+        if( p->type == ARRAY ) {
+          printf("\tmovl $%s, %%eax\n", p->name ); 
+          printf("\tpushl %%eax\n");
+          expect(ob);
+          expression();
+          printf("\tsall $2, %%eax\n");
+          printf("\tpopl %%edx\n");
+          printf("\taddl %%edx, %%eax\n");
+          printf("\tmovl (%%eax), %%eax\n");
+          //printf("\tpush %%eax\n");
+          expect(cb);
+        } else {
+          printf("\tmovl %s, %%eax\n", id );
+        }
       }
     } else if (accept(number)) {
       printf("\tmovl $%d, %%eax\n", num );
@@ -280,11 +299,27 @@ void statement(void) {
         if( p->level > 0 ) {
           printf("\tleal  %d(\%%ebp), %%eax\n", p->zsp ); 
           printf("\tpushl %%eax\n");
+        } else if( p->type == ARRAY ) {
+          accept(ob);
+          printf("\tmovl $%s, %%eax\n", p->name );
+          printf("\tpushl %%eax\n");
+          expression();
+          printf("\tsall $2, %%eax\n");
+          printf("\tpopl %%edx\n");
+          printf("\taddl %%edx, %%eax\n");
+          printf("\tpushl %%eax\n");
+          accept(cb);
         }
+         
         expect(becomes);
         expression();
         if( p->level == 0 ) {
-          printf("\tmovl %%eax, %s\n", p->name );
+          if( p->type == ARRAY ) {
+            printf("\tpopl %%edx\n");
+            printf("\tmovl %%eax, (%%edx)\n" );
+          } else {
+            printf("\tmovl %%eax, %s\n", p->name );
+          }
         } else if( p->level == level ) { // Local
           printf("\tpopl %%edx\n");
           printf("\tmovl %%eax, (%%edx)\n");
@@ -369,11 +404,18 @@ void block(void) {
         do {
             expect(ident);
             p = look(id);
-            if( level > 0 ) { /* Local */
+            if( p->level > 0 ) { /* Local */
               zsp = zsp - 4;
               printf("\tpushl %%edx\n");
             }
             p->zsp = zsp;
+            if( sym == ob ) {
+              expect(ob);
+              expect(number);
+              p->size = num *4 ;
+              expect(cb);
+              p->type = ARRAY;
+            } else p->type = INT;
         } while (accept(comma));
         expect(semicolon);
     }
