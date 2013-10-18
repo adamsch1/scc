@@ -203,7 +203,7 @@ void factor(void) {
           printf("\tpushl %%eax\n");
           expect(ob);
           expression();
-          if( p->type == INT ) printf("\tsall $2, %%eax\n");
+          if( p->type == INT ) printf("\tsall $2, %%eax\n"); /* Mul by 4 */
           printf("\tpopl %%edx\n");
           printf("\taddl %%edx, %%eax\n");
           if( p->type == INT ) printf("\tmovl (%%eax), %%eax\n");
