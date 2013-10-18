@@ -56,6 +56,12 @@ void cleansym() {
   }
 }
 
+void dump()  {
+  while( table_count-- > 0 ) {
+    printf("\t.comm %s,4,4\n", table[ table_count ].name );
+  }
+}
+
 struct sym_t * look( const char *name ) {
   int k;
 
@@ -174,10 +180,10 @@ void factor(void) {
     struct sym_t *sym;
     if (accept(ident)) {
       sym = look(id);
-      if( sym->level > 0 ) {
+      if( sym->level > 0 ) { /* Locals - stack offset reference  */
         printf("\tleal %d(%%ebp), %%eax\n", sym->zsp ); 
-        printf("\tmovl (%%eax), %%eax\n");
-      } else {
+        printf("\tmovl (%%eax), %%eax\n") ;
+      } else { /* Globals - just a symbol */
         printf("\tmovl %s, %%eax\n", id );
       }
     } else if (accept(number)) {
@@ -253,14 +259,14 @@ void statement(void) {
 
     if (accept(ident)) {
         p = look(id);
-        if( p->level == level ) {
+        if( p->level > 0 ) {
           printf("\tleal  %d(\%%ebp), %%eax\n", p->zsp ); 
           printf("\tpushl %%eax\n");
         }
         strcpy( temp, id );
         expect(becomes);
         expression();
-        if( p->level < level ) {                
+        if( p->level == 0 ) {
           //printf("\tleal  %d(\%%ebp), %%eax\n", zsp ); 
           //printf("\tmovl %%eax, %s\n", temp );
           printf("\tmovl %%eax, %s\n", p->name );
@@ -277,6 +283,7 @@ void statement(void) {
           printf("\t.TYPE main,@function\n", id );
           printf("main:\n");
           printf("\tpushl %%ebp\n");
+          printf("\tmovl %%esp, %%ebp\n");
         }
         do {
             if( sym == endsym ) break;
@@ -351,6 +358,7 @@ void program(void) {
     printf("\tpopl %%ebp\n");
     printf("\tret\n");
     expect(period);
+    dump();
 }
 
 int main() {
