@@ -327,9 +327,16 @@ void statement(void) {
         statement();
         printf("L%d:\n", lfalse );
     } else if (accept(whilesym)) {
+        int lfalse = lid++;
+        int ltrue  = lid++;
+        printf("L%d:\n", ltrue );
         condition();
+        printf("\ttestl %%eax, %%eax\n");
+        printf("\tje L%d\n", lfalse );
         expect(dosym);
         statement();
+        printf("\tjmp L%d\n", ltrue );
+        printf("L%d:\n", lfalse );
     } else {
         printf("statement: syntax error2: %d:%s\n", lineno,id);
         getsym();
