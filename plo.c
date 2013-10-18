@@ -25,6 +25,13 @@ struct _rw {
   { "odd",   oddsym },
 };
 
+struct sym_t {
+  char name[16];
+  int  level;
+  int  zsp;
+} table[100];
+int table_count = 0;
+
 Symbol sym;
 void expression(void);
 char ch= ' '; 
@@ -39,6 +46,32 @@ int  level;
 void error2( const char *msg ) {
   printf("%s\n",msg);
   exit(1);
+}
+
+void cleansym() {
+  if( table_count > 0 ) {
+    while( table_count > 0 && table[ table_count-1 ].level > level-1 ) {
+      table_count--;
+    }
+  }
+}
+
+struct sym_t * look( const char *name ) {
+  int k;
+
+  for( k=0; k<table_count; k++) {
+    if( strcmp( table[k].name, name ) == 0 ) {
+      return &table[k];
+    }
+  }
+
+  if( k < 100 ) {
+    strcpy( table[k].name, name );
+    table[k].level = level;
+    table_count++;
+  }
+
+  return &table[k];
 }
 
 void getsym() { 
@@ -138,8 +171,15 @@ int expect(Symbol s) {
 }
  
 void factor(void) {
+    struct sym_t *sym;
     if (accept(ident)) {
-      printf("\tmovl %s, %%eax\n", id );
+      sym = look(id);
+      if( sym->level > 0 ) {
+        printf("\tleal %d(%%ebp), %%eax\n", sym->zsp ); 
+        printf("\tmovl (%%eax), %%eax\n");
+      } else {
+        printf("\tmovl %s, %%eax\n", id );
+      }
     } else if (accept(number)) {
       printf("\tmovl $%d, %%eax\n", num );
         ;
@@ -153,26 +193,42 @@ void factor(void) {
 }
  
 void term(void) {
+    Symbol tsym; 
     factor();
     while (sym == times || sym == slash) {
+        tsym = sym;
         printf("\tpushl %%eax\n");
         getsym();
         factor();
         printf("\tpopl %%edx\n");
-        printf("\timull %%edx\n");
+        if( tsym == times ) {
+          printf("\timull %%edx\n");
+        } else {
+          printf("\txchgl %%eax, %%edx\n");
+          printf("\tmovl %%edx, %%ecx\n");
+          printf("\tcltd\n");
+          printf("\tidivl %%ecx\n");
+        }
     }
 }
  
 void expression(void) {
+    Symbol tsym;
     if (sym == plus || sym == minus)
         getsym();
     term();
     while (sym == plus || sym == minus) {
+        tsym = sym;
         printf("\tpushl %%eax\n");
         getsym();
         term();
         printf("\tpopl %%edx\n");
-        printf("\taddl %%edx, %%eax\n");
+        if( tsym == plus ) {
+          printf("\taddl %%edx, %%eax\n");
+        } else {
+          printf("\tsub %%eax, %%edx\n");
+          printf("\tmovl %%edx, %%eax\n");
+        }
     }
 }
  
@@ -193,11 +249,25 @@ void condition(void) {
  
 void statement(void) {
     char temp[256];
+    struct sym_t *p;
+
     if (accept(ident)) {
+        p = look(id);
+        if( p->level == level ) {
+          printf("\tleal  %d(\%%ebp), %%eax\n", p->zsp ); 
+          printf("\tpushl %%eax\n");
+        }
         strcpy( temp, id );
         expect(becomes);
         expression();
-        printf("\tmovl %%eax, %s\n", temp );
+        if( p->level < level ) {                
+          //printf("\tleal  %d(\%%ebp), %%eax\n", zsp ); 
+          //printf("\tmovl %%eax, %s\n", temp );
+          printf("\tmovl %%eax, %s\n", p->name );
+        } else if( p->level == level ) {
+          printf("\tpopl %%edx\n");
+          printf("\tmovl %%eax, (%%edx)\n");
+        }
     } else if (accept(callsym)) {
         expect(ident);
     } else if (accept(beginsym)) {
@@ -233,6 +303,8 @@ void statement(void) {
 }
  
 void block(void) {
+    int zsp = 0;
+    struct sym_t *p;
     if (accept(constsym)) {
         do {
             expect(ident);
@@ -244,6 +316,14 @@ void block(void) {
     if (accept(varsym)) {
         do {
             expect(ident);
+            p = look(id);
+            if( level > 0 ) {
+              /* Local */
+              zsp = zsp - 4;
+              printf("\tpushl %%edx\n");
+              //printf("\tleal  %d(\%%ebp), %%eax\n", zsp ); 
+            }
+            p->zsp = zsp;
         } while (accept(comma));
         expect(semicolon);
     }
@@ -258,6 +338,7 @@ void block(void) {
         expect(semicolon);
         block();
         expect(semicolon);
+        cleansym();
         level--;
     }
     statement();
