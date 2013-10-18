@@ -6,7 +6,7 @@
 typedef enum {ident, number, lparen, rparen, times, slash, plus,
     minus, eql, neq, lss, leq, gtr, geq, callsym, beginsym, semicolon,
     endsym, ifsym, whilesym, becomes, thensym, dosym, constsym, comma,
-    varsym, procsym, period, oddsym, colon, bang, ob, cb} Symbol;
+    varsym, procsym, period, oddsym, colon, bang, ob, cb, charsym} Symbol;
 
 struct _rw {
   char *name;
@@ -23,9 +23,10 @@ struct _rw {
   { "var",   varsym },
   { "procedure",   procsym },
   { "odd",   oddsym },
+  { "char",  charsym }
 };
 
-enum { INT, ARRAY };
+enum { INT, ARRAY, CHAR };
 
 struct sym_t {
   char name[16];
@@ -317,12 +318,18 @@ void statement(void) {
           if( p->type == ARRAY ) {
             printf("\tpopl %%edx\n");
             printf("\tmovl %%eax, (%%edx)\n" );
-          } else {
+          } else if( p->type == INT ) {
             printf("\tmovl %%eax, %s\n", p->name );
+          } else {
+            printf("\tmovb %%al, %s\n", p->name );
           }
         } else if( p->level == level ) { // Local
           printf("\tpopl %%edx\n");
-          printf("\tmovl %%eax, (%%edx)\n");
+          if( p->type == CHAR ) {
+            printf("\tmovb %%al, (%%edx)\n");
+          } else {
+            printf("\tmovl %%eax, (%%edx)\n");
+          }
         }
     } else if (accept(bang)){ 
         accept(ident); /* Printf basically */
@@ -384,6 +391,7 @@ void statement(void) {
 void block(void) {
     int zsp = 0;
     struct sym_t *p;
+    int type = INT; 
     if (accept(constsym)) {
         do {
             expect(ident);
@@ -402,6 +410,10 @@ void block(void) {
     }
     if (accept(varsym)) {
         do {
+            if( sym == charsym ) {
+              accept(charsym);
+              type = CHAR;
+            }
             expect(ident);
             p = look(id);
             if( p->level > 0 ) { /* Local */
@@ -409,13 +421,14 @@ void block(void) {
               printf("\tpushl %%edx\n");
             }
             p->zsp = zsp;
+            p->type = CHAR;
             if( sym == ob ) {
               expect(ob);
               expect(number);
               p->size = num *4 ;
               expect(cb);
               p->type = ARRAY;
-            } else p->type = INT;
+            } else p->type = type;
         } while (accept(comma));
         expect(semicolon);
     }
