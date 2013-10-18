@@ -28,6 +28,7 @@ struct _rw {
 struct sym_t {
   char name[16];
   int  level;
+  int  constant;
   int  zsp;
 } table[100];
 int table_count = 0;
@@ -37,7 +38,7 @@ void expression(void);
 char ch= ' '; 
 
 int  cmax =256;
-char id[256];
+char id[256], temp[256];
 int  num, lid;
 int  imax = 1000000;
 int  lineno;
@@ -60,7 +61,7 @@ void dump()  {
   printf("cc1:\n");
   printf("\t.byte 37,100,10,0\n");
   while( table_count-- > 0 ) {
-    printf("\t.comm %s,4,4\n", table[ table_count ].name );
+    if( !table[table_count].constant ) printf("\t.comm %s,4,4\n", table[ table_count ].name );
   }
 }
 
@@ -105,14 +106,16 @@ int lex() {
 
    if( isalpha(ch) ) {
      do {
-       id[k++] = ch;
+       temp[k++] = ch;
        ch = getchar();
      } while( (isalpha(ch) || isdigit(ch)) && k < cmax-1 );
-     id[k] = 0;
+     temp[k] = 0;
  
      for( k=0; k<sizeof(rw)/sizeof(struct _rw); k++ ) {
-       if( strcmp( rw[k].name, id ) == 0 ) return rw[k].s;
+       if( strcmp( rw[k].name, temp ) == 0 ) return rw[k].s;
      }
+
+     strcpy(id, temp );
      return ident;
    } else if (isdigit(ch)) {
       num = 0;
@@ -180,11 +183,11 @@ int expect(Symbol s) {
 }
  
 void factor(void) {
-    struct sym_t *sym;
+    struct sym_t *p;
     if (accept(ident)) {
-      sym = look(id);
-      if( sym->level > 0 ) { /* Locals - stack offset reference  */
-        printf("\tleal %d(%%ebp), %%eax\n", sym->zsp ); 
+      p = look(id);
+      if( p->level > 0 ) { /* Locals - stack offset reference  */
+        printf("\tleal %d(%%ebp), %%eax\n", p->zsp ); 
         printf("\tmovl (%%eax), %%eax\n") ;
       } else { /* Globals - just a symbol */
         printf("\tmovl %s, %%eax\n", id );
@@ -349,8 +352,16 @@ void block(void) {
     if (accept(constsym)) {
         do {
             expect(ident);
+            p = look(id); 
+            p->constant = 1;
+            printf("\t.globl %s\n", id );
+            printf("\t.align 4\n");
+            printf("\t.type %s,@object\n", id );
+            printf("\t.size %s, 4\n", id );
             expect(eql);
             expect(number);
+            printf("%s:\n", p->name );
+            printf("\t.long %d\n", num );
         } while (accept(comma));
         expect(semicolon);
     }
