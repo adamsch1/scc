@@ -242,17 +242,24 @@ void expression(void) {
 }
  
 void condition(void) {
+    Symbol tsym;
     if (accept(oddsym)) {
         expression();
     } else {
         expression();
         if (sym == eql || sym == neq || sym == lss || sym == leq || sym == gtr || sym == geq) {
+            tsym = sym;
             printf("\tpushl %%eax\n");
             getsym();
             expression();
             printf("\tpopl %%edx\n");
             printf("\tcmpl %%eax, %%edx\n");
-            printf("\tsete %%al\n");
+            if( tsym == eql ) printf("\tsete %%al\n");
+            else if( tsym == neq ) printf("\tsetne %%al\n");
+            else if( tsym == lss ) printf("\tsetl  %%al\n");
+            else if( tsym == leq ) printf("\tsetle %%al\n");
+            else if( tsym == gtr ) printf("\tsetg  %%al\n");
+            else if( tsym == geq ) printf("\tsetge %%al\n");
             printf("\tmovzbl %%al, %%eax\n");
 
         } else {
