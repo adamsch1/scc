@@ -157,6 +157,7 @@ int lex() {
         if( gch() == '=' ) return geq;
         return gtr;
       } else {
+      if( ch == ')' ) { ch = getchar(); return rparen;  }
       if( ch == ';' ) { ch = getchar(); return semicolon;  }
       if( ch == '*' ) { ch = getchar(); return times;  }
       if( ch == '.' ) { ch = getchar(); return period;  }
@@ -299,6 +300,17 @@ void statement(void) {
 
     if (accept(ident)) {
         p = look(id);
+
+        if( sym == lparen ) { /* Call */
+          accept(lparen);
+          do {
+            expression();
+            accept(comma);
+            printf("\tpushl %%eax\n");
+          } while( !accept(rparen ) );
+          return; 
+        }
+
         if( p->level > 0 ) {
           printf("\tleal  %d(\%%ebp), %%eax\n", p->zsp ); 
           printf("\tpushl %%eax\n");
