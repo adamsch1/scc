@@ -6,7 +6,7 @@
 typedef enum {ident, number, lparen, rparen, times, slash, plus,
     minus, eql, neq, lss, leq, gtr, geq, callsym, beginsym, semicolon,
     endsym, ifsym, whilesym, becomes, thensym, dosym, constsym, comma,
-    varsym, procsym, period, oddsym, colon} Symbol;
+    varsym, procsym, period, oddsym, colon, bang} Symbol;
 
 struct _rw {
   char *name;
@@ -57,6 +57,8 @@ void cleansym() {
 }
 
 void dump()  {
+  printf("cc1:\n");
+  printf("\t.byte 37,100,10,0\n");
   while( table_count-- > 0 ) {
     printf("\t.comm %s,4,4\n", table[ table_count ].name );
   }
@@ -155,6 +157,7 @@ int lex() {
       if( ch == ',' ) { ch = getchar(); return comma; }
       if( ch == '=' ) { ch = getchar(); return eql; }
       if( ch == '#' ) { ch = getchar(); return neq; }
+      if( ch == '!' ) { ch = getchar(); return bang; }
       if( ch == EOF ) return 0;
       printf("Unrecognzied: %c\n", ch );
       }
@@ -254,7 +257,6 @@ void condition(void) {
 }
  
 void statement(void) {
-    char temp[256];
     struct sym_t *p;
 
     if (accept(ident)) {
@@ -263,22 +265,28 @@ void statement(void) {
           printf("\tleal  %d(\%%ebp), %%eax\n", p->zsp ); 
           printf("\tpushl %%eax\n");
         }
-        strcpy( temp, id );
         expect(becomes);
         expression();
         if( p->level == 0 ) {
-          //printf("\tleal  %d(\%%ebp), %%eax\n", zsp ); 
-          //printf("\tmovl %%eax, %s\n", temp );
           printf("\tmovl %%eax, %s\n", p->name );
-        } else if( p->level == level ) {
+        } else if( p->level == level ) { // Local
           printf("\tpopl %%edx\n");
           printf("\tmovl %%eax, (%%edx)\n");
         }
+    } else if (accept(bang)){ 
+        accept(ident); /* Printf basically */
+        p = look(id);
+        printf("\tmovl %s, %%eax\n", p->name );
+        printf("\tpushl %%eax\n");
+        printf("\tmovl $cc1+0, %%eax\n");
+        printf("\tpushl %%eax\n");
+        printf("\tcall printf\n");
+        printf("\taddl $8, %%esp\n"); 
     } else if (accept(callsym)) {
-        expect(ident);
+        expect(ident); /* Call a function */
         printf("\tcall %s\n", id );
     } else if (accept(beginsym)) {
-        if( level == 0 ) {
+        if( level == 0 ) { /* Start of main def */
           printf(".globl main\n", id );
           printf("\t.TYPE main,@function\n", id );
           printf("main:\n");
@@ -291,7 +299,7 @@ void statement(void) {
         } while( accept(semicolon) );
         expect(endsym);
         if( sym == semicolon ) {
-          // close 
+          /* Ret from main */
           printf("\tmovl %%ebp, %%esp\n");
           printf("\tpopl %%ebp\n");
           printf("\tret\n");
@@ -325,18 +333,16 @@ void block(void) {
         do {
             expect(ident);
             p = look(id);
-            if( level > 0 ) {
-              /* Local */
+            if( level > 0 ) { /* Local */
               zsp = zsp - 4;
               printf("\tpushl %%edx\n");
-              //printf("\tleal  %d(\%%ebp), %%eax\n", zsp ); 
             }
             p->zsp = zsp;
         } while (accept(comma));
         expect(semicolon);
     }
     while (accept(procsym)) {
-        level++;
+        level++; /* Start of a procedure def */
         expect(ident);
         printf(".globl %s\n", id );
         printf("\t.TYPE %s,@function\n", id );
@@ -346,7 +352,7 @@ void block(void) {
         expect(semicolon);
         block();
         expect(semicolon);
-        cleansym();
+        cleansym(); /* Clean locals */
         level--;
     }
     statement();

@@ -9,6 +9,9 @@ LIBS=
 
 OBJ=	smc386c.o 
 
+plo: plo.o
+	$(CC) -g -o plo plo.c $(LIBS)
+
 scc: $(OBJ) 
 	$(CC) -g -o c0 $(OBJ)  $(LIBS)
 
