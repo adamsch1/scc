@@ -55,7 +55,7 @@ int lex() {
    int digit, endstring, i, j, k;
    char tch;
 
-   k = num = 0;
+   k = 0;
    while( 1 ) {
      if( ch == '\n' ) ch=getchar();
      else if( isspace(ch)) ch=getchar();
@@ -74,6 +74,7 @@ int lex() {
      }
      return ident;
    } else if (isdigit(ch)) {
+      num = 0;
       num = ch -'0';
       while( (ch=getchar()) && isdigit(ch) ) {
         num = num*10 + ch-'0'; 
@@ -138,8 +139,9 @@ int expect(Symbol s) {
  
 void factor(void) {
     if (accept(ident)) {
-        ;
+      printf("\tmovl %s, %%eax\n", id );
     } else if (accept(number)) {
+      printf("\tmovl $%d, %%eax\n", num );
         ;
     } else if (accept(lparen)) {
         expression();
@@ -153,8 +155,11 @@ void factor(void) {
 void term(void) {
     factor();
     while (sym == times || sym == slash) {
+        printf("\tpushl %%eax\n");
         getsym();
         factor();
+        printf("\tpopl %%edx\n");
+        printf("\timull %%edx\n");
     }
 }
  
@@ -163,8 +168,11 @@ void expression(void) {
         getsym();
     term();
     while (sym == plus || sym == minus) {
+        printf("\tpushl %%eax\n");
         getsym();
         term();
+        printf("\tpopl %%edx\n");
+        printf("\taddl %%edx, %%eax\n");
     }
 }
  
@@ -184,9 +192,12 @@ void condition(void) {
 }
  
 void statement(void) {
+    char temp[256];
     if (accept(ident)) {
+        strcpy( temp, id );
         expect(becomes);
         expression();
+        printf("\tmovl %%eax, %s\n", temp );
     } else if (accept(callsym)) {
         expect(ident);
     } else if (accept(beginsym)) {
@@ -203,6 +214,7 @@ void statement(void) {
         expect(endsym);
         if( sym == semicolon ) {
           // close 
+          printf("\tmovl %%ebp, %%esp\n");
           printf("\tpopl %%ebp\n");
           printf("\tret\n");
         }
@@ -242,6 +254,7 @@ void block(void) {
         printf("\t.TYPE %s,@function\n", id );
         printf("%s:\n", id );
         printf("\tpushl %%ebp\n");
+        printf("\tmovl %%esp, %%ebp\n");
         expect(semicolon);
         block();
         expect(semicolon);
