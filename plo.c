@@ -38,7 +38,7 @@ char ch= ' ';
 
 int  cmax =256;
 char id[256];
-int  num;
+int  num, lid;
 int  imax = 1000000;
 int  lineno;
 int  level;
@@ -247,8 +247,14 @@ void condition(void) {
     } else {
         expression();
         if (sym == eql || sym == neq || sym == lss || sym == leq || sym == gtr || sym == geq) {
+            printf("\tpushl %%eax\n");
             getsym();
             expression();
+            printf("\tpopl %%edx\n");
+            printf("\tcmpl %%eax, %%edx\n");
+            printf("\tsete %%al\n");
+            printf("\tmovzbl %%al, %%eax\n");
+
         } else {
             error2("condition: invalid operator");
             getsym();
@@ -305,9 +311,14 @@ void statement(void) {
           printf("\tret\n");
         }
     } else if (accept(ifsym)) {
+        int lfalse;
+        lfalse = lid++; 
         condition();
+        printf("\ttestl %%eax, %%eax\n");
+        printf("\tje L%d\n", lfalse );
         expect(thensym);
         statement();
+        printf("L%d:\n", lfalse );
     } else if (accept(whilesym)) {
         condition();
         expect(dosym);
