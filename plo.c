@@ -270,6 +270,7 @@ void statement(void) {
         }
     } else if (accept(callsym)) {
         expect(ident);
+        printf("\tcall %s\n", id );
     } else if (accept(beginsym)) {
         if( level == 0 ) {
           printf(".globl main\n", id );
