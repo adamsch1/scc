@@ -67,7 +67,7 @@ void dump()  {
   printf("cc1:\n");
   printf("\t.byte 37,100,10,0\n");
   while( table_count-- > 0 ) {
-    if( !table[table_count].constant ) printf("\t.comm %s,%d,4\n", table[ table_count ].name, table[table_count].size  );
+    if( !table[table_count].constant ) printf("\t.comm %s,%d,%d\n", table[ table_count ].name, table[table_count].size, table[table_count].type == CHAR ? 1 : 4  );
   }
 }
 
@@ -203,10 +203,11 @@ void factor(void) {
           printf("\tpushl %%eax\n");
           expect(ob);
           expression();
-          printf("\tsall $2, %%eax\n");
+          if( p->type == INT ) printf("\tsall $2, %%eax\n");
           printf("\tpopl %%edx\n");
           printf("\taddl %%edx, %%eax\n");
-          printf("\tmovl (%%eax), %%eax\n");
+          if( p->type == INT ) printf("\tmovl (%%eax), %%eax\n");
+          if( p->type == CHAR) printf("\tmovsbl (%%eax), %%eax\n");
           //printf("\tpush %%eax\n");
           expect(cb);
         } else {
@@ -306,7 +307,7 @@ void statement(void) {
           printf("\tmovl $%s, %%eax\n", p->name );
           printf("\tpushl %%eax\n");
           expression();
-          printf("\tsall $2, %%eax\n");
+          if( p->type == INT ) printf("\tsall $2, %%eax\n");
           printf("\tpopl %%edx\n");
           printf("\taddl %%edx, %%eax\n");
           printf("\tpushl %%eax\n");
@@ -318,7 +319,8 @@ void statement(void) {
         if( p->level == 0 ) {
           if( p->isarray == ARRAY ) {
             printf("\tpopl %%edx\n");
-            printf("\tmovl %%eax, (%%edx)\n" );
+            if( p->type == INT ) printf("\tmovl %%eax, (%%edx)\n" );
+            if( p->type == CHAR ) printf("\tmovb %%al, (%%edx)\n");
           } else if( p->type == INT ) {
             printf("\tmovl %%eax, %s\n", p->name );
           } else {
@@ -411,6 +413,7 @@ void block(void) {
     }
     if (accept(varsym)) {
         do {
+            type = INT;
             if( sym == charsym ) {
               accept(charsym);
               type = CHAR;
@@ -423,10 +426,11 @@ void block(void) {
             }
             p->zsp = zsp;
             p->type = type;
+            if( type == CHAR ){  p->size = 4; } else { p->size = 1; }
             if( sym == ob ) {
               expect(ob);
               expect(number);
-              p->size = num *4 ;
+              p->size = num * (type == CHAR ? 1 : 4 ) ;
               expect(cb);
               p->isarray = ARRAY;
             }
