@@ -34,6 +34,7 @@ struct sym_t {
   int  constant;
   int  zsp;
   int  type;
+  int  isarray;
   int  size;
 } table[100];
 int table_count = 0;
@@ -197,7 +198,7 @@ void factor(void) {
         printf("\tleal %d(%%ebp), %%eax\n", p->zsp ); 
         printf("\tmovl (%%eax), %%eax\n") ;
       } else { /* Globals - just a symbol */
-        if( p->type == ARRAY ) {
+        if( p->isarray == ARRAY ) {
           printf("\tmovl $%s, %%eax\n", p->name ); 
           printf("\tpushl %%eax\n");
           expect(ob);
@@ -300,7 +301,7 @@ void statement(void) {
         if( p->level > 0 ) {
           printf("\tleal  %d(\%%ebp), %%eax\n", p->zsp ); 
           printf("\tpushl %%eax\n");
-        } else if( p->type == ARRAY ) {
+        } else if( p->isarray == ARRAY ) {
           accept(ob);
           printf("\tmovl $%s, %%eax\n", p->name );
           printf("\tpushl %%eax\n");
@@ -315,7 +316,7 @@ void statement(void) {
         expect(becomes);
         expression();
         if( p->level == 0 ) {
-          if( p->type == ARRAY ) {
+          if( p->isarray == ARRAY ) {
             printf("\tpopl %%edx\n");
             printf("\tmovl %%eax, (%%edx)\n" );
           } else if( p->type == INT ) {
@@ -421,14 +422,14 @@ void block(void) {
               printf("\tpushl %%edx\n");
             }
             p->zsp = zsp;
-            p->type = CHAR;
+            p->type = type;
             if( sym == ob ) {
               expect(ob);
               expect(number);
               p->size = num *4 ;
               expect(cb);
-              p->type = ARRAY;
-            } else p->type = type;
+              p->isarray = ARRAY;
+            }
         } while (accept(comma));
         expect(semicolon);
     }
