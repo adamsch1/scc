@@ -1,18 +1,15 @@
-
-var y;
-
-procedure square;
 var x;
+
+procedure lex( char a, char b )
+var k;
 begin
-  x := 10000000;
-  while  y<x  do 
-  begin
-    y := y + 1;
-  end
+  x := a + b;
 end;
- 
+
+
 begin
-  y := 1;
-  call square;
-  ! y;
+  lex(50,49);
+  !x ;
+  lex(2,49);
+  !x;
 end.

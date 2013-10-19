@@ -35,7 +35,9 @@ struct sym_t {
   int  zsp;
   int  type;
   int  isarray;
+  int  isfunc;
   int  size;
+  int  isparam;
 } table[100];
 int table_count = 0;
 
@@ -67,7 +69,7 @@ void dump()  {
   printf("cc1:\n");
   printf("\t.byte 37,100,10,0\n");
   while( table_count-- > 0 ) {
-    if( !table[table_count].constant ) printf("\t.comm %s,%d,%d\n", table[ table_count ].name, table[table_count].size, table[table_count].type == CHAR ? 1 : 4  );
+    if( !table[table_count].constant && !table[table_count].isfunc ) printf("\t.comm %s,%d,%d\n", table[ table_count ].name, table[table_count].size, table[table_count].type == CHAR ? 1 : 4  );
   }
 }
 
@@ -307,6 +309,7 @@ void statement(void) {
             expression();
             accept(comma);
             printf("\tpushl %%eax\n");
+            printf("\tcall %s\n", p->name );
           } while( !accept(rparen ) );
           return; 
         }
@@ -452,12 +455,37 @@ void block(void) {
     while (accept(procsym)) {
         level++; /* Start of a procedure def */
         expect(ident);
+        p = look(id);
+        p->isfunc = 1;
         printf(".globl %s\n", id );
         printf("\t.TYPE %s,@function\n", id );
         printf("%s:\n", id );
         printf("\tpushl %%ebp\n");
         printf("\tmovl %%esp, %%ebp\n");
-        expect(semicolon);
+        expect(lparen);
+        zsp = 4;
+        do {
+          type = INT;
+          if( sym == charsym ) { 
+            accept(charsym);
+            type = CHAR;
+          }
+          expect(ident);
+          p = look(id);
+          p->isparam = 1;
+          zsp = zsp + 4;
+          p->zsp = zsp;
+          p->type = type;
+            if( type == CHAR ){  p->size = 4; } else { p->size = 1; }
+            if( sym == ob ) {
+              expect(ob);
+              expect(number);
+              p->size = num * (type == CHAR ? 1 : 4 ) ;
+              expect(cb);
+              p->isarray = ARRAY;
+            }
+        } while( accept(comma));
+        expect(rparen);
         block();
         expect(semicolon);
         cleansym(); /* Clean locals */
@@ -469,6 +497,7 @@ void block(void) {
 void program(void) {
     getsym();
     block();
+    printf("\tmovl %%ebp, %%esp\n");
     printf("\tpopl %%ebp\n");
     printf("\tret\n");
     expect(period);
