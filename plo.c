@@ -381,7 +381,8 @@ void statement(void) {
         do {
             if( sym == endsym ) break;
             statement();
-        } while( accept(semicolon) );
+            accept(semicolon);
+        } while( 1 ) ; //accept(semicolon)); // accept(semicolon) );
         expect(endsym);
         if( sym == semicolon ) {
           /* Ret from main */
