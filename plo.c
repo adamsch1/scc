@@ -326,11 +326,14 @@ void statement(void) {
 
         if( p->level > 0 ) {
           printf("\tleal  %d(\%%ebp), %%eax\n", p->zsp ); 
-          printf("\tpushl %%eax\n");
-        } else if( p->isarray == ARRAY ) {
-          accept(ob);
+        } else {
           printf("\tmovl $%s, %%eax\n", p->name );
-          printf("\tpushl %%eax\n");
+        }
+        printf("\tpushl %%eax\n");
+      
+        if( p->isarray == ARRAY ) {
+          accept(ob);
+          //printf("\tmovl $%s, %%eax\n", p->name );
           expression();
           if( p->type == INT ) printf("\tsall $2, %%eax\n");
           printf("\tpopl %%edx\n");
@@ -481,14 +484,14 @@ void block(void) {
               zsp = zsp + 4;
               p->zsp = zsp;
               p->type = type;
-                if( type == CHAR ){  p->size = 4; } else { p->size = 1; }
-                if( sym == ob ) {
-                  expect(ob);
-                  expect(number);
-                  p->size = num * (type == CHAR ? 1 : 4 ) ;
-                  expect(cb);
-                  p->isarray = ARRAY;
-                }
+              if( type == CHAR ){  p->size = 4; } else { p->size = 1; }
+              if( sym == ob ) {
+                expect(ob);
+                expect(number);
+                p->size = num * (type == CHAR ? 1 : 4 ) ;
+                expect(cb);
+                p->isarray = ARRAY;
+              }
             } while( accept(comma));
         }
         expect(rparen);
