@@ -44,6 +44,7 @@ int table_count = 0;
 Symbol sym;
 void expression(void);
 void docall( struct sym_t *p);
+void function_header( char * name );
 char ch= ' '; 
 
 int  cmax =256;
@@ -372,11 +373,7 @@ void statement(void) {
         printf("\tcall %s\n", id );
     } else if (accept(beginsym)) {
         if( level == 0 ) { /* Start of main def */
-          printf(".globl main\n", id );
-          printf("\t.TYPE main,@function\n", id );
-          printf("main:\n");
-          printf("\tpushl %%ebp\n");
-          printf("\tmovl %%esp, %%ebp\n");
+          function_header("main");
         }
         do {
             if( sym == endsym ) break;
@@ -467,11 +464,7 @@ void block(void) {
         expect(ident);
         p = look(id);
         p->isfunc = 1;
-        printf(".globl %s\n", id );
-        printf("\t.TYPE %s,@function\n", id );
-        printf("%s:\n", id );
-        printf("\tpushl %%ebp\n");
-        printf("\tmovl %%esp, %%ebp\n");
+        function_header(id);
         expect(lparen);
         zsp = 4;
         do {
@@ -512,6 +505,14 @@ void program(void) {
     printf("\tret\n");
     expect(period);
     dump();
+}
+
+void function_header( char * name ) {
+  printf(".globl %s\n", name );
+  printf("\t.TYPE %s,@function\n", name );
+  printf("%s:\n", name );
+  printf("\tpushl %%ebp\n");
+  printf("\tmovl %%esp, %%ebp\n");
 }
 
 int main() {
