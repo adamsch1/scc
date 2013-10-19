@@ -324,16 +324,18 @@ void statement(void) {
           return;
         }
 
-        if( p->level > 0 ) {
+        if( p->level > 0 ) { 
+          // Local is referenced from stack
           printf("\tleal  %d(\%%ebp), %%eax\n", p->zsp ); 
         } else {
+          // Globabal is referenced by symbol name
           printf("\tmovl $%s, %%eax\n", p->name );
         }
         printf("\tpushl %%eax\n");
-      
+     
+        // If array we have to calculate address of array offset 
         if( p->isarray == ARRAY ) {
           accept(ob);
-          //printf("\tmovl $%s, %%eax\n", p->name );
           expression();
           if( p->type == INT ) printf("\tsall $2, %%eax\n");
           printf("\tpopl %%edx\n");
@@ -344,24 +346,19 @@ void statement(void) {
          
         expect(becomes);
         expression();
-        if( p->level == 0 ) {
-          if( p->isarray == ARRAY ) {
-            printf("\tpopl %%edx\n");
-            if( p->type == INT ) printf("\tmovl %%eax, (%%edx)\n" );
-            if( p->type == CHAR ) printf("\tmovb %%al, (%%edx)\n");
-          } else if( p->type == INT ) {
-            printf("\tmovl %%eax, %s\n", p->name );
-          } else {
-            printf("\tmovb %%al, %s\n", p->name );
-          }
-        } else if( p->level == level ) { // Local
+
+        if( p->isarray ) {  // address to array offset
           printf("\tpopl %%edx\n");
-          if( p->type == CHAR ) {
-            printf("\tmovb %%al, (%%edx)\n");
-          } else {
-            printf("\tmovl %%eax, (%%edx)\n");
-          }
         }
+
+        if( p->level == 0 && p->isarray != ARRAY ) {
+          if( p->type == CHAR ) printf("\tmovb %%al, %s\n", p->name );
+          if( p->type == INT ) printf("\tmovl %%eax, %s\n", p->name );
+        } else {
+          if( p->type == CHAR ) printf("\tmovb %%al, (%%edx)\n");
+          if( p->type == INT ) printf("\tmovl %%eax, (%%edx)\n" );
+        }
+
     } else if (accept(bang)){ 
         accept(ident); /* Printf basically */
         p = look(id);
