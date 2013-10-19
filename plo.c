@@ -466,28 +466,31 @@ void block(void) {
         p->isfunc = 1;
         function_header(id);
         expect(lparen);
-        zsp = 4;
-        do {
-          type = INT;
-          if( sym == charsym ) { 
-            accept(charsym);
-            type = CHAR;
-          }
-          expect(ident);
-          p = look(id);
-          p->isparam = 1;
-          zsp = zsp + 4;
-          p->zsp = zsp;
-          p->type = type;
-            if( type == CHAR ){  p->size = 4; } else { p->size = 1; }
-            if( sym == ob ) {
-              expect(ob);
-              expect(number);
-              p->size = num * (type == CHAR ? 1 : 4 ) ;
-              expect(cb);
-              p->isarray = ARRAY;
-            }
-        } while( accept(comma));
+        if( sym != rparen ) {
+            /* Looks like they are specifying arguments */
+            zsp = 4;
+            do {
+              type = INT;
+              if( sym == charsym ) { 
+                accept(charsym);
+                type = CHAR;
+              } 
+              expect(ident);
+              p = look(id);
+              p->isparam = 1;
+              zsp = zsp + 4;
+              p->zsp = zsp;
+              p->type = type;
+                if( type == CHAR ){  p->size = 4; } else { p->size = 1; }
+                if( sym == ob ) {
+                  expect(ob);
+                  expect(number);
+                  p->size = num * (type == CHAR ? 1 : 4 ) ;
+                  expect(cb);
+                  p->isarray = ARRAY;
+                }
+            } while( accept(comma));
+        }
         expect(rparen);
         block();
         expect(semicolon);
