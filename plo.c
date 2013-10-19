@@ -197,6 +197,16 @@ void factor(void) {
     struct sym_t *p;
     if (accept(ident)) {
       p = look(id);
+      if( sym == lparen ) { /* Call */
+          accept(lparen);
+          do {
+            expression();
+            accept(comma);
+            printf("\tpushl %%eax\n");
+            printf("\tcall %s\n", p->name );
+          } while( !accept(rparen ) );
+          return; 
+        }
       if( p->level > 0 ) { /* Locals - stack offset reference  */
         printf("\tleal %d(%%ebp), %%eax\n", p->zsp ); 
         printf("\tmovl (%%eax), %%eax\n") ;
