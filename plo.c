@@ -43,6 +43,7 @@ int table_count = 0;
 
 Symbol sym;
 void expression(void);
+void docall( struct sym_t *p);
 char ch= ' '; 
 
 int  cmax =256;
@@ -198,15 +199,9 @@ void factor(void) {
     if (accept(ident)) {
       p = look(id);
       if( sym == lparen ) { /* Call */
-          accept(lparen);
-          do {
-            expression();
-            accept(comma);
-            printf("\tpushl %%eax\n");
-            printf("\tcall %s\n", p->name );
-          } while( !accept(rparen ) );
-          return; 
-        }
+          docall(p); 
+          return;
+      }
       if( p->level > 0 ) { /* Locals - stack offset reference  */
         printf("\tleal %d(%%ebp), %%eax\n", p->zsp ); 
         printf("\tmovl (%%eax), %%eax\n") ;
@@ -306,6 +301,16 @@ void condition(void) {
         }
     }
 }
+
+void docall( struct sym_t *p) {
+  accept(lparen);
+  do {
+    expression();
+    accept(comma);
+    printf("\tpushl %%eax\n");
+    printf("\tcall %s\n", p->name );
+  } while( !accept(rparen ) );
+}
  
 void statement(void) {
     struct sym_t *p;
@@ -314,14 +319,8 @@ void statement(void) {
         p = look(id);
 
         if( sym == lparen ) { /* Call */
-          accept(lparen);
-          do {
-            expression();
-            accept(comma);
-            printf("\tpushl %%eax\n");
-            printf("\tcall %s\n", p->name );
-          } while( !accept(rparen ) );
-          return; 
+          docall(p);
+          return;
         }
 
         if( p->level > 0 ) {
