@@ -206,10 +206,7 @@ void factor(void) {
       if( p->level > 0 ) { /* Locals - stack offset reference  */
         printf("\tleal %d(%%ebp), %%eax\n", p->zsp ); 
         printf("\tmovl (%%eax), %%eax\n") ;
-      } else { /* Globals - just a symbol */
-        if( p->isarray == ARRAY ) {
-          printf("\tmovl $%s, %%eax\n", p->name ); 
-          printf("\tpushl %%eax\n");
+        if( p->isarray == ARRAY ){
           expect(ob);
           expression();
           if( p->type == INT ) printf("\tsall $2, %%eax\n"); /* Mul by 4 */
@@ -217,8 +214,22 @@ void factor(void) {
           printf("\taddl %%edx, %%eax\n");
           if( p->type == INT ) printf("\tmovl (%%eax), %%eax\n");
           if( p->type == CHAR) printf("\tmovsbl (%%eax), %%eax\n");
-          //printf("\tpush %%eax\n");
           expect(cb);
+        }
+      } else { /* Globals - just a symbol */
+        if( p->isarray == ARRAY ) {
+          printf("\tmovl $%s, %%eax\n", p->name ); 
+          printf("\tpushl %%eax\n");
+          if( sym == ob ) {
+          expect(ob);
+          expression();
+          if( p->type == INT ) printf("\tsall $2, %%eax\n"); /* Mul by 4 */
+          printf("\tpopl %%edx\n");
+          printf("\taddl %%edx, %%eax\n");
+          if( p->type == INT ) printf("\tmovl (%%eax), %%eax\n");
+          if( p->type == CHAR) printf("\tmovsbl (%%eax), %%eax\n");
+          expect(cb);
+          }
         } else {
           printf("\tmovl %s, %%eax\n", id );
         }
@@ -327,6 +338,7 @@ void statement(void) {
         if( p->level > 0 ) { 
           // Local is referenced from stack
           printf("\tleal  %d(\%%ebp), %%eax\n", p->zsp ); 
+          if( p->isarray == ARRAY ) printf("\tmovl (%%eax), %%eax\n");
         } else {
           // Globabal is referenced by symbol name
           printf("\tmovl $%s, %%eax\n", p->name );
@@ -484,7 +496,7 @@ void block(void) {
               if( type == CHAR ){  p->size = 4; } else { p->size = 1; }
               if( sym == ob ) {
                 expect(ob);
-                expect(number);
+                //expect(number);
                 p->size = num * (type == CHAR ? 1 : 4 ) ;
                 expect(cb);
                 p->isarray = ARRAY;
