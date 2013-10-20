@@ -383,22 +383,14 @@ void statement(void) {
           return;
         }
         if( sym == ob ) {
-          getref(p);
-          getoffset(p);
         } 
       
         expect(becomes);
         expression();
 
         if( p->level == 0 ) {
-          if( p->isarray == ARRAY ) {
-            printf("\tpopl %%edx\n");
-            printf("\tmovl %%eax,(%%edx)\n");
-          } else {
-            printf("\tmovl %%eax, %s\n",p->name);
-          }
+          printf("\tmovl %%eax, %s\n",p->name);
         }
-        //setsymbol(p);
     } else if (accept(bang)){ 
         accept(ident); /* Printf basically */
         p = look(id);
