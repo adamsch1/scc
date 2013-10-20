@@ -353,6 +353,16 @@ void docall( struct sym_t *p) {
   } while( !accept(rparen ) );
   printf("\tcall %s\n", p->name );
 }
+
+void setsymbol( struct sym_t *p ) {
+  if( p->level == 0 ) {
+    if( p->type == CHAR ) printf("\tmovb %%al, %s\n", p->name );
+    if( p->type == INT ) printf("\tmovl %%eax, %s\n", p->name );
+  } else {
+    if( p->type == CHAR ) printf("\tmovb %%al, (%%edx)\n");
+    if( p->type == INT ) printf("\tmovl %%eax, (%%edx)\n" );
+  }
+}
  
 void statement(void) {
     struct sym_t *p;
@@ -364,59 +374,10 @@ void statement(void) {
           docall(p);
           return;
         }
-
-        tsym = sym;
-        if( p->isarray == ARRAY && sym == ob ) {
-          if( sym == ob ) { 
-            if( p->level == 0 ) {
-              printf("\tmovl $%s, %%eax\n", p->name );
-              printf("\tpushl %%eax\n");
-            }
-            // Array offset
-            accept(ob);
-            expression();
-            if( p->type == INT ) printf("\tsall $2, %%eax\n");
-            printf("\tpopl %%edx\n");
-            printf("\taddl %%edx, %%eax\n");
-            printf("\tpushl %%eax\n");
-            accept(cb);
-          } else {
-            // Not array offset 
-          }
-        }
-
+        getref(p);
         expect(becomes);
         expression();
-
-        if( p->isarray )  {
-          if( p->level > 0 ) {
-            // Local is referenced from stack
-            getref(p);
-          } else {
-            // Globabal is referenced by symbol name
-            printf("\tmovl %%eax, %s\n", p->name );
-          }
-        } else {
-          if( p->level > 0 ) {
-            printf("\tmovl %%eax, %s\n", p->name );
-          }
-        }
-
-        if( p->isarray && tsym == ob ) {  // address to array offset
-          printf("\tpopl %%edx\n");
-        }
-
-        if( p->level == 0 && p->isarray != ARRAY ) {
-          if( p->type == CHAR ) printf("\tmovb %%al, %s\n", p->name );
-          if( p->type == INT ) printf("\tmovl %%eax, %s\n", p->name );
-        } else {
-          if( tsym == ob || p->level > 0 ) {
-            if( p->type == CHAR ) printf("\tmovb %%al, (%%edx)\n");
-            if( p->type == INT ) printf("\tmovl %%eax, (%%edx)\n" );
-          }  else {
-          }
-        }
-
+        setsymbol(p);
     } else if (accept(bang)){ 
         accept(ident); /* Printf basically */
         p = look(id);
