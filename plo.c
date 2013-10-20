@@ -6,7 +6,8 @@
 typedef enum {ident, number, lparen, rparen, times, slash, plus,
     minus, eql, neq, lss, leq, gtr, geq, callsym, beginsym, semicolon,
     endsym, ifsym, whilesym, becomes, thensym, dosym, constsym, comma,
-    varsym, procsym, period, oddsym, colon, bang, ob, cb, charsym} Symbol;
+    varsym, procsym, period, oddsym, colon, bang, ob, cb, charsym,
+    quotesym } Symbol;
 
 struct _rw {
   char *name;
@@ -53,6 +54,8 @@ int  num, lid;
 int  imax = 1000000;
 int  lineno;
 int  level;
+char litpool[8000];
+int  litptr;
 
 void error2( const char *msg ) {
   printf("%s\n",msg);
@@ -68,7 +71,25 @@ void cleansym() {
 }
 
 void dump()  {
+  int k,j;
   printf("cc1:\n");
+ 
+  k=0;
+  while( k<litptr ) {
+    printf("\t.byte ");
+    j=10;
+    while( j > 0 ) {
+      printf("%d", litpool[k] );
+      if( j==0 || k >= litptr ) {
+        printf("\n");
+        break;
+      }
+      printf(",");
+      k++;
+      j--;
+    }
+  }
+ 
   printf("\t.byte 37,100,10,0\n");
   while( table_count-- > 0 ) {
     if( !table[table_count].constant && !table[table_count].isfunc ) printf("\t.comm %s,%d,%d\n", table[ table_count ].name, table[table_count].size, table[table_count].type == CHAR ? 1 : 4  );
@@ -174,6 +195,7 @@ int lex() {
       if( ch == '!' ) { ch = getchar(); return bang; }
       if( ch == '[' ) { ch = getchar(); return ob; }
       if( ch == ']' ) { ch = getchar(); return cb; }
+      if( ch == '"' ) { ch = getchar(); return quotesym; }
       if( ch == EOF ) return 0;
       printf("Unrecognzied: %c\n", ch );
       }
@@ -218,17 +240,17 @@ void factor(void) {
         }
       } else { /* Globals - just a symbol */
         if( p->isarray == ARRAY ) {
-          printf("\tmovl $%s, %%eax\n", p->name ); 
+          printf("\tmovl %s, %%eax\n", p->name ); 
           printf("\tpushl %%eax\n");
           if( sym == ob ) {
-          expect(ob);
-          expression();
-          if( p->type == INT ) printf("\tsall $2, %%eax\n"); /* Mul by 4 */
-          printf("\tpopl %%edx\n");
-          printf("\taddl %%edx, %%eax\n");
-          if( p->type == INT ) printf("\tmovl (%%eax), %%eax\n");
-          if( p->type == CHAR) printf("\tmovsbl (%%eax), %%eax\n");
-          expect(cb);
+            expect(ob);
+            expression();
+            if( p->type == INT ) printf("\tsall $2, %%eax\n"); /* Mul by 4 */
+            printf("\tpopl %%edx\n");
+            printf("\taddl %%edx, %%eax\n");
+            if( p->type == INT ) printf("\tmovl (%%eax), %%eax\n");
+            if( p->type == CHAR) printf("\tmovsbl (%%eax), %%eax\n");
+            expect(cb);
           }
         } else {
           printf("\tmovl %s, %%eax\n", id );
@@ -240,9 +262,20 @@ void factor(void) {
     } else if (accept(lparen)) {
         expression();
         expect(rparen);
+    } else if ( sym == quotesym ) {
+       printf("\tmovl $cc1+%d, %%eax\n", litptr );
+       while( ch != '"' ) {
+         litpool[ litptr ] = ch;
+         litptr++;
+         ch = getchar();
+       }
+       litpool[litptr] = 0;
+       accept(quotesym);
+       accept(quotesym);
+       accept(semicolon);
     } else {
-        error2("factor: syntax error2");
-        getsym();
+        //error2("factor: syntax error2");
+        //getsym();
     }
 }
  
@@ -320,13 +353,13 @@ void docall( struct sym_t *p) {
     expression();
     accept(comma);
     printf("\tpushl %%eax\n");
-    printf("\tcall %s\n", p->name );
   } while( !accept(rparen ) );
+  printf("\tcall %s\n", p->name );
 }
  
 void statement(void) {
     struct sym_t *p;
-
+    Symbol tsym;
     if (accept(ident)) {
         p = look(id);
 
@@ -335,31 +368,50 @@ void statement(void) {
           return;
         }
 
-        if( p->level > 0 ) { 
-          // Local is referenced from stack
-          printf("\tleal  %d(\%%ebp), %%eax\n", p->zsp ); 
-          if( p->isarray == ARRAY ) printf("\tmovl (%%eax), %%eax\n");
-        } else {
-          // Globabal is referenced by symbol name
-          printf("\tmovl $%s, %%eax\n", p->name );
+        tsym = sym;
+        if( p->isarray == ARRAY && sym == ob ) {
+          if( sym == ob ) { 
+            // Array offset
+            accept(ob);
+            expression();
+            if( p->type == INT ) printf("\tsall $2, %%eax\n");
+            printf("\tpopl %%edx\n");
+            printf("\taddl %%edx, %%eax\n");
+            printf("\tpushl %%eax\n");
+            accept(cb);
+          } else {
+            // Not array offset 
+          }
         }
-        printf("\tpushl %%eax\n");
-     
-        // If array we have to calculate address of array offset 
-        if( p->isarray == ARRAY ) {
-          accept(ob);
-          expression();
-          if( p->type == INT ) printf("\tsall $2, %%eax\n");
-          printf("\tpopl %%edx\n");
-          printf("\taddl %%edx, %%eax\n");
-          printf("\tpushl %%eax\n");
-          accept(cb);
-        }
-         
+
         expect(becomes);
         expression();
 
-        if( p->isarray ) {  // address to array offset
+        if( p->isarray )  {
+          if( p->level > 0 ) {
+            // Local is referenced from stack
+            printf("\tleal  %d(\%%ebp), %%eax\n", p->zsp ); 
+            printf("\tmovl (%%eax), %%eax\n");
+          } else {
+            // Globabal is referenced by symbol name
+            printf("\tmovl %%eax, %s\n", p->name );
+          }
+        } else {
+          if( p->level > 0 ) {
+            printf("\tmovl %%eax, %s\n", p->name );
+          }
+          // Globabal is referenced by symbol name
+          //printf("\tmovl $%s, %%eax\n", p->name );
+          //printf("\tmovl %%eax, %s\n", p->name );
+        }
+
+        //printf("\tpushl %%eax\n");
+     
+         
+//        expect(becomes);
+//        expression();
+
+        if( p->isarray && tsym == ob ) {  // address to array offset
           printf("\tpopl %%edx\n");
         }
 
@@ -367,8 +419,11 @@ void statement(void) {
           if( p->type == CHAR ) printf("\tmovb %%al, %s\n", p->name );
           if( p->type == INT ) printf("\tmovl %%eax, %s\n", p->name );
         } else {
-          if( p->type == CHAR ) printf("\tmovb %%al, (%%edx)\n");
-          if( p->type == INT ) printf("\tmovl %%eax, (%%edx)\n" );
+          if( tsym == ob || p->level > 0 ) {
+            if( p->type == CHAR ) printf("\tmovb %%al, (%%edx)\n");
+            if( p->type == INT ) printf("\tmovl %%eax, (%%edx)\n" );
+          }  else {
+          }
         }
 
     } else if (accept(bang)){ 
@@ -376,7 +431,7 @@ void statement(void) {
         p = look(id);
         printf("\tmovl %s, %%eax\n", p->name );
         printf("\tpushl %%eax\n");
-        printf("\tmovl $cc1+0, %%eax\n");
+        printf("\tmovl $cc1+%d, %%eax\n", litptr == 0 ? litptr : litptr + 1);
         printf("\tpushl %%eax\n");
         printf("\tcall printf\n");
         printf("\taddl $8, %%esp\n"); 
