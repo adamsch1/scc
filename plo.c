@@ -421,7 +421,7 @@ void statement(void) {
             accept(semicolon);
         } while( 1 ) ; //accept(semicolon)); // accept(semicolon) );
         expect(endsym);
-        if( sym == semicolon  ) {
+        if( sym == semicolon && !gavehead ) {
           /* Ret from main */
           printf("\tmovl %%ebp, %%esp\n");
           printf("\tpopl %%ebp\n");
@@ -435,6 +435,7 @@ void statement(void) {
         printf("\tje L%d\n", lfalse );
         expect(thensym);
         statement();
+        accept(semicolon);
         printf("L%d:\n", lfalse );
     } else if (accept(whilesym)) {
         int lfalse = lid++;
