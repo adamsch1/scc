@@ -224,7 +224,10 @@ void getref( struct sym_t *p ) {
     printf("\tmovl (%%eax), %%eax\n") ;
   } else {
     // Globals are just symbols
-    printf("\tmovl %s, %%eax\n", p->name ); 
+    if( p->isarray == ARRAY ) 
+      printf("\tmovl $%s, %%eax\n", p->name ); 
+    else
+      printf("\tmovl %s, %%eax\n", p->name ); 
     printf("\tpushl %%eax\n");
   }
 }
@@ -354,6 +357,7 @@ void docall( struct sym_t *p) {
   printf("\tcall %s\n", p->name );
 }
 
+// Set value of specified symbol
 void setsymbol( struct sym_t *p ) {
   if( p->level == 0 ) {
     if( p->type == CHAR ) printf("\tmovb %%al, %s\n", p->name );
