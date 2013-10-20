@@ -233,6 +233,7 @@ void getref( struct sym_t *p ) {
 
 void getoffset( struct sym_t *p ) {
   if( p->isarray == ARRAY ) {
+    printf("\tpushl %%eax\n");
     expect(ob);
     expression();
     if( p->type == INT ) printf("\tsall $2, %%eax\n"); /* Mul by 4 */
