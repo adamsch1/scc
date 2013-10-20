@@ -368,7 +368,7 @@ void statement(void) {
         if( p->isarray == ARRAY && sym == ob ) {
           expect(ob);
           expression();
-          printf("\tpushl %%eax\n");
+          printf("\tpushl %%eax\n"); // Array index
           expect(cb);
         }
 
@@ -380,12 +380,14 @@ void statement(void) {
             printf("\tpopl %%edx\n"); // Array index
             printf("\tpushl %%eax\n"); // save rval
 
+            // Calculate array offset
             printf("\tmovl $%s, %%eax\n", p->name ); 
             if( p->type == INT ) printf("\tsall $2, %%edx\n"); 
             printf("\taddl %%edx, %%eax\n");
             printf("\tpopl %%edx\n"); // rval
-            printf("\tmovl %%edx, (%%eax)\n");
+            printf("\tmovl %%edx, (%%eax)\n"); // Move rval into mem location
           } else {
+            // No array - just intrinsic
             printf("\tmovl %%eax, %s\n",p->name);
           }
         } else {
