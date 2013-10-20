@@ -56,6 +56,7 @@ int  lineno;
 int  level;
 char litpool[8000];
 int  litptr;
+int  gavehead;
 
 void error2( const char *msg ) {
   printf("%s\n",msg);
@@ -368,23 +369,23 @@ void statement(void) {
         if( p->isarray == ARRAY && sym == ob ) {
           expect(ob);
           expression();
-          printf("\tpushl %%eax\n"); // Array index
+          printf("\tpushl %%eax\n"); // Array index for lval 
           expect(cb);
         }
 
         expect(becomes);
-        expression();
+        expression(); // Calculate rval ends up in eax
 
         if( p->level == 0 ) {
           if( p->isarray == ARRAY ) {
-            printf("\tpopl %%edx\n"); // Array index
-            printf("\tpushl %%eax\n"); // save rval
+            printf("\tpopl %%edx\n"); // Array index from lval above
+            printf("\tpushl %%eax\n"); // save the rval
 
             // Calculate array offset
             printf("\tmovl $%s, %%eax\n", p->name ); 
             if( p->type == INT ) printf("\tsall $2, %%edx\n"); 
             printf("\taddl %%edx, %%eax\n");
-            printf("\tpopl %%edx\n"); // rval
+            printf("\tpopl %%edx\n"); // restore rval
             printf("\tmovl %%edx, (%%eax)\n"); // Move rval into mem location
           } else {
             // No array - just intrinsic
@@ -411,8 +412,8 @@ void statement(void) {
         expect(ident); /* Call a function */
         printf("\tcall %s\n", id );
     } else if (accept(beginsym)) {
-        if( level == 0 ) { /* Start of main def */
-          function_header("main");
+        if( level == 0 && !gavehead) { /* Start of main def */
+          function_header("main"); gavehead=1;
         }
         do {
             if( sym == endsym ) break;
@@ -420,7 +421,7 @@ void statement(void) {
             accept(semicolon);
         } while( 1 ) ; //accept(semicolon)); // accept(semicolon) );
         expect(endsym);
-        if( sym == semicolon ) {
+        if( sym == semicolon  ) {
           /* Ret from main */
           printf("\tmovl %%ebp, %%esp\n");
           printf("\tpopl %%ebp\n");
