@@ -224,7 +224,7 @@ void getref( struct sym_t *p ) {
     printf("\tmovl (%%eax), %%eax\n") ;
   } else {
     // Globals are just symbols
-    printf("\tmovl $%s, %%eax\n", p->name ); 
+    printf("\tmovl %s, %%eax\n", p->name ); 
     printf("\tpushl %%eax\n");
   }
 }
