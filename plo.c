@@ -228,6 +228,15 @@ void getref( struct sym_t *p ) {
     if( p->isarray == ARRAY )  {
       // Global array - copy address of array
       printf("\tmovl $%s, %%eax\n", p->name ); 
+      printf("\tpushl %%eax\n");
+      expect(ob);
+      expression();
+      if( p->type == INT ) printf("\tsall $2, %%eax\n"); /* Mul by 4 */
+      printf("\tpopl %%edx\n");
+      printf("\taddl %%edx, %%eax\n");
+      // Move value at calculated offset into eax
+      printf("\tmovl (%%eax), %%eax\n");
+      expect(cb);
     } else {
       // Global non pointer - just copy value
       printf("\tmovl %s, %%eax\n", p->name ); 
@@ -235,21 +244,6 @@ void getref( struct sym_t *p ) {
   }
 }
 
-void getoffset( struct sym_t *p ) {
-  if( p->isarray == ARRAY ) {
-    // Expect address of array in edx
-    printf("\tpushl %%eax\n");
-    expect(ob);
-    expression();
-    if( p->type == INT ) printf("\tsall $2, %%eax\n"); /* Mul by 4 */
-    printf("\tpopl %%edx\n");
-    printf("\taddl %%edx, %%eax\n");
-    // Calculate memory offset back in %%eax
-    printf("\tpushl %%eax\n");
-    expect(cb);
-  } 
-}
- 
 void factor(void) {
     struct sym_t *p;
     if (accept(ident)) {
@@ -257,13 +251,11 @@ void factor(void) {
       if( sym == lparen ) { /* Call */
           docall(p); 
           return;
-      } else {
+      } else { 
         getref(p);
-        getoffset(p);
       }
     } else if (accept(number)) {
       printf("\tmovl $%d, %%eax\n", num );
-        ;
     } else if (accept(lparen)) {
       expression();
       expect(rparen);
@@ -362,22 +354,6 @@ void docall( struct sym_t *p) {
   printf("\tcall %s\n", p->name );
 }
 
-// Set value of specified symbol
-void setsymbol( struct sym_t *p ) {
-  if( p->level == 0 ) {
-    if( p->isarray == ARRAY ) {
-      printf("\tpopl %%edx\n"); 
-      printf("\tmovl %%eax, (%%edx)\n");
-    } else {
-      if( p->type == CHAR ) printf("\tmovb %%al, %s\n", p->name );
-      if( p->type == INT ) printf("\tmovl %%eax, %s\n", p->name );
-    }
-  } else {
-    if( p->type == CHAR ) printf("\tmovb %%al, (%%edx)\n");
-    if( p->type == INT ) printf("\tmovl %%eax, (%%edx)\n" );
-  }
-}
- 
 void statement(void) {
     struct sym_t *p;
     Symbol tsym;
@@ -389,11 +365,29 @@ void statement(void) {
           return;
         }
 
+        if( p->isarray == ARRAY && sym == ob ) {
+          expect(ob);
+          expression();
+          printf("\tpushl %%eax\n");
+          expect(cb);
+        }
+
         expect(becomes);
         expression();
 
         if( p->level == 0 ) {
-          printf("\tmovl %%eax, %s\n",p->name);
+          if( p->isarray == ARRAY ) {
+            printf("\tpopl %%edx\n"); // Array index
+            printf("\tpushl %%eax\n"); // save rval
+
+            printf("\tmovl $%s, %%eax\n", p->name ); 
+            if( p->type == INT ) printf("\tsall $2, %%edx\n"); 
+            printf("\taddl %%edx, %%eax\n");
+            printf("\tpopl %%edx\n"); // rval
+            printf("\tmovl %%edx, (%%eax)\n");
+          } else {
+            printf("\tmovl %%eax, %s\n",p->name);
+          }
         } else {
           // Locals
           if( p->type == INT ) {
