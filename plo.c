@@ -216,6 +216,31 @@ int expect(Symbol s) {
     printf("expect: unexpected symbol: %d:%s\n", lineno,id);
     return 0;
 }
+
+void getref( struct sym_t *p ) {
+  if( p->level > 0 ) {
+    // Locals are stack offsets
+    printf("\tleal %d(%%ebp), %%eax\n", p->zsp ); 
+    printf("\tmovl (%%eax), %%eax\n") ;
+  } else {
+    // Globals are just symbols
+    printf("\tmovl $%s, %%eax\n", p->name ); 
+    printf("\tpushl %%eax\n");
+  }
+}
+
+void getoffset( struct sym_t *p ) {
+  if( p->isarray == ARRAY ) {
+    expect(ob);
+    expression();
+    if( p->type == INT ) printf("\tsall $2, %%eax\n"); /* Mul by 4 */
+    printf("\tpopl %%edx\n");
+    printf("\taddl %%edx, %%eax\n");
+    if( p->type == INT ) printf("\tmovl (%%eax), %%eax\n");
+    if( p->type == CHAR) printf("\tmovsbl (%%eax), %%eax\n");
+    expect(cb);
+  } 
+}
  
 void factor(void) {
     struct sym_t *p;
@@ -225,37 +250,10 @@ void factor(void) {
           docall(p); 
           return;
       }
-      if( p->level > 0 ) { /* Locals - stack offset reference  */
-        printf("\tleal %d(%%ebp), %%eax\n", p->zsp ); 
-        printf("\tmovl (%%eax), %%eax\n") ;
-        if( p->isarray == ARRAY ){
-          expect(ob);
-          expression();
-          if( p->type == INT ) printf("\tsall $2, %%eax\n"); /* Mul by 4 */
-          printf("\tpopl %%edx\n");
-          printf("\taddl %%edx, %%eax\n");
-          if( p->type == INT ) printf("\tmovl (%%eax), %%eax\n");
-          if( p->type == CHAR) printf("\tmovsbl (%%eax), %%eax\n");
-          expect(cb);
-        }
-      } else { /* Globals - just a symbol */
-        if( p->isarray == ARRAY ) {
-          printf("\tmovl $%s, %%eax\n", p->name ); 
-          printf("\tpushl %%eax\n");
-          if( sym == ob ) {
-            expect(ob);
-            expression();
-            if( p->type == INT ) printf("\tsall $2, %%eax\n"); /* Mul by 4 */
-            printf("\tpopl %%edx\n");
-            printf("\taddl %%edx, %%eax\n");
-            if( p->type == INT ) printf("\tmovl (%%eax), %%eax\n");
-            if( p->type == CHAR) printf("\tmovsbl (%%eax), %%eax\n");
-            expect(cb);
-          }
-        } else {
-          printf("\tmovl $%s, %%eax\n", id );
-        }
-      }
+ 
+      getref(p);
+      getoffset(p);
+     
     } else if (accept(number)) {
       printf("\tmovl $%d, %%eax\n", num );
         ;
@@ -394,8 +392,7 @@ void statement(void) {
         if( p->isarray )  {
           if( p->level > 0 ) {
             // Local is referenced from stack
-            printf("\tleal  %d(\%%ebp), %%eax\n", p->zsp ); 
-            printf("\tmovl (%%eax), %%eax\n");
+            getref(p);
           } else {
             // Globabal is referenced by symbol name
             printf("\tmovl %%eax, %s\n", p->name );
@@ -404,16 +401,7 @@ void statement(void) {
           if( p->level > 0 ) {
             printf("\tmovl %%eax, %s\n", p->name );
           }
-          // Globabal is referenced by symbol name
-          //printf("\tmovl $%s, %%eax\n", p->name );
-          //printf("\tmovl %%eax, %s\n", p->name );
         }
-
-        //printf("\tpushl %%eax\n");
-     
-         
-//        expect(becomes);
-//        expression();
 
         if( p->isarray && tsym == ob ) {  // address to array offset
           printf("\tpopl %%edx\n");
