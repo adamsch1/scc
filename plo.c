@@ -240,7 +240,7 @@ void factor(void) {
         }
       } else { /* Globals - just a symbol */
         if( p->isarray == ARRAY ) {
-          printf("\tmovl %s, %%eax\n", p->name ); 
+          printf("\tmovl $%s, %%eax\n", p->name ); 
           printf("\tpushl %%eax\n");
           if( sym == ob ) {
             expect(ob);
@@ -253,7 +253,7 @@ void factor(void) {
             expect(cb);
           }
         } else {
-          printf("\tmovl %s, %%eax\n", id );
+          printf("\tmovl $%s, %%eax\n", id );
         }
       }
     } else if (accept(number)) {
@@ -371,6 +371,10 @@ void statement(void) {
         tsym = sym;
         if( p->isarray == ARRAY && sym == ob ) {
           if( sym == ob ) { 
+            if( p->level == 0 ) {
+              printf("\tmovl $%s, %%eax\n", p->name );
+              printf("\tpushl %%eax\n");
+            }
             // Array offset
             accept(ob);
             expression();
