@@ -217,6 +217,7 @@ int expect(Symbol s) {
     return 0;
 }
 
+// Get address of symbol and aset into eax
 void getref( struct sym_t *p ) {
   if( p->level > 0 ) {
     // Locals are stack offsets
@@ -225,8 +226,10 @@ void getref( struct sym_t *p ) {
   } else {
     // Globals are just symbols
     if( p->isarray == ARRAY )  {
+      // Global array - copy address of array
       printf("\tmovl $%s, %%eax\n", p->name ); 
     } else {
+      // Global non pointer - just copy value
       printf("\tmovl %s, %%eax\n", p->name ); 
     }
   }
