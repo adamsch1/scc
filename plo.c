@@ -39,6 +39,7 @@ struct sym_t {
   int  isfunc;
   int  size;
   int  isparam;
+  int  ispointer;
 } table[100];
 int table_count = 0;
 
@@ -228,7 +229,10 @@ void getref( struct sym_t *p ) {
     // Globals are just symbols
     if( p->isarray == ARRAY )  {
       // Global array - copy address of array
-      printf("\tmovl $%s, %%eax\n", p->name ); 
+      if( p->ispointer ) 
+        printf("\tmovl %s, %%eax\n", p->name ); 
+      else
+        printf("\tmovl $%s, %%eax\n", p->name ); 
       printf("\tpushl %%eax\n");
       expect(ob);
       expression();
@@ -372,13 +376,15 @@ void statement(void) {
           expression();
           printf("\tpushl %%eax\n"); // Array index for lval 
           expect(cb);
+        } else if( p->isarray ) {
+          p->ispointer = 1;  
         }
 
         expect(becomes);
         expression(); // Calculate rval ends up in eax
 
         if( p->level == 0 ) {
-          if( p->isarray == ARRAY  ) {
+          if( p->isarray == ARRAY && p->ispointer == 0  ) {
             printf("\tpopl %%edx\n"); // Array index from lval above
             printf("\tpushl %%eax\n"); // save the rval
 
