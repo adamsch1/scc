@@ -77,8 +77,8 @@ void dump()  {
   printf("cc1:\n");
  
   k=0;
+  if( litptr )printf("\t.byte ");
   while( k<litptr ) {
-    printf("\t.byte ");
     j=10;
     while( j > 0 ) {
       printf("%d", litpool[k] );
