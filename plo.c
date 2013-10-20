@@ -224,27 +224,23 @@ void getref( struct sym_t *p ) {
     printf("\tmovl (%%eax), %%eax\n") ;
   } else {
     // Globals are just symbols
-    if( p->isarray == ARRAY ) 
+    if( p->isarray == ARRAY )  {
       printf("\tmovl $%s, %%eax\n", p->name ); 
-    else {
-      printf("\tmovl %s, %%eax\n", p->name ); 
       printf("\tpushl %%eax\n");
+    } else {
+      printf("\tmovl %s, %%eax\n", p->name ); 
     }
   }
 }
 
 void getoffset( struct sym_t *p ) {
   if( p->isarray == ARRAY ) {
-    printf("\tpushl %%eax\n");
     expect(ob);
     expression();
     if( p->type == INT ) printf("\tsall $2, %%eax\n"); /* Mul by 4 */
     printf("\tpopl %%edx\n");
     printf("\taddl %%edx, %%eax\n");
     printf("\tpushl %%eax\n");
-    // Actual copy don't do it :)
-    //if( p->type == INT ) printf("\tmovl (%%eax), %%eax\n");
-    //if( p->type == CHAR) printf("\tmovsbl (%%eax), %%eax\n");
     expect(cb);
   } 
 }
@@ -387,14 +383,23 @@ void statement(void) {
           docall(p);
           return;
         }
-        getref(p);
         if( sym == ob ) {
+          getref(p);
           getoffset(p);
         } 
       
         expect(becomes);
         expression();
-        setsymbol(p);
+
+        if( p->level == 0 ) {
+          if( p->isarray == ARRAY ) {
+            printf("\tpopl %%edx\n");
+            printf("\tmovl %%eax,(%%edx)\n");
+          } else {
+            printf("\tmovl %%eax, %s\n",p->name);
+          }
+        }
+        //setsymbol(p);
     } else if (accept(bang)){ 
         accept(ident); /* Printf basically */
         p = look(id);
