@@ -382,14 +382,19 @@ void statement(void) {
           docall(p);
           return;
         }
-        if( sym == ob ) {
-        } 
-      
+
         expect(becomes);
         expression();
 
         if( p->level == 0 ) {
           printf("\tmovl %%eax, %s\n",p->name);
+        } else {
+          // Locals
+          if( p->type == INT ) {
+            // Load address of local into edx
+            printf("\tleal %d(%%ebp), %%edx\n", p->zsp ); 
+            printf("\tmovl %%eax, (%%edx)\n"); 
+          } 
         }
     } else if (accept(bang)){ 
         accept(ident); /* Printf basically */
