@@ -67,13 +67,13 @@ The compiler can be bootstrapped by using gcc in the following way:
 /* IN DOS USE THE SMALL-C OBJ LIBRARY RATHER THAN IN-LINE ASSEMBLER */
 
 #define NULL 0
-#define eol 10 /* was 13 */
+#define EOL 10 /* was 13 */
 
 /*  UNIX definitions (if not stand-alone)  */
 
 /* #include "stdio.h"  /* was <stdio.h> */
 
-/* #define eol 10  */
+/* #define EOL 10  */
 
 /*  Define the symbol table parameters  */
 
@@ -104,11 +104,13 @@ The compiler can be bootstrapped by using gcc in the following way:
 #define  ARRAY  2
 #define  POINTER  3
 #define  FUNCTION 4
+#define  STRUCT   5
 
 /*  Define possible entries for "TYPE"  */
 
-#define  CCHAR  1
-#define  CINT  2
+#define  CCHAR   1
+#define  CINT    2
+#define  CSTRUCT 3
 
 /*  Define possible entries for "STORAGE"  */
 
@@ -153,9 +155,8 @@ The compiler can be bootstrapped by using gcc in the following way:
 #define  STCONT  5
 #define  STASM  6
 #define  STEXP  7
-#define STFOR   9
-#define STDO    10
-
+#define  STFOR   9
+#define  STDO    10
 
 /* Define how to carve up a NAME too long for the assembler */
 
@@ -237,12 +238,15 @@ char  line[LINESIZE];    /* parsing buffer */
 char  mline[LINESIZE];  /* temp macro buffer */
 int  lptr,mptr;    /* ptrs into each */
 
+int field_offset; /* field offset in struct */
+
 /*  Misc STORAGE  */
 
 int  nxtlab,    /* next avail label # */
   litlab,    /* label # assigned to literal pool */
   Zsp,    /* compiler relative stk ptr */
   argstk,    /* FUNCTION arg sp */
+  field_offset,
   argtop,/*added by E.V.*/
   ncmp,    /* # open compound statements */
   errcnt,    /* # errors in compilation */
@@ -349,6 +353,7 @@ parse()
     {
     if(amatch("char",4)){declglb(CCHAR);ns();}
     else if(amatch("int",3)){declglb(CINT);ns();}
+    else if(amatch("struct",6)){newstruct();}
     else if(match("#asm"))doasm();
     else if(match("#include"))doinclude();
     else if(match("#define"))addmac();
@@ -387,7 +392,10 @@ dumpglbs()
   if(glbflag==0)return;  /* don't if user said no */
   cptr=STARTGLB;
   while(cptr<glbptr)
-    {if(cptr[IDENT]!=FUNCTION)
+    {
+     if(cptr[IDENT]==STRUCT ) {
+       cptr=cptr+SYMSIZ;
+     } else if(cptr[IDENT]!=FUNCTION)
       /* do if anything but FUNCTION */
       {/*col();*/
         /* output NAME as label... */
@@ -405,8 +413,10 @@ dumpglbs()
       else
         outasm(",1");
       nl();
+        cptr=cptr+SYMSIZ;
+      } else {
+        cptr=cptr+SYMSIZ;
       }
-    cptr=cptr+SYMSIZ;
     }
   }
 /*          */
@@ -647,6 +657,90 @@ needsub()
   needbrack("]");    /* force single dimension */
   return num[0];    /* and return size */
   }
+
+newstruct() {
+  char n[NAMESIZE];  /* ptr => currfn,  gtf 7/16/80 */
+  char m[NAMESIZE];  /* ptr => currfn,  gtf 7/16/80 */
+  int  tidx;
+  if (symname(n)==0) {
+    error("illegal STRUCT or declaration");
+    kill();  /* invalidate line */
+    return;
+  }
+  fnstart=lineno;    /* remember where fn began  gtf 7/2/80 */
+  infunc=1;    /* note, in FUNCTION now.  gtf 7/16/80 */
+  /* already in symbol table ? */
+  if(currfn=findglb(n))  {
+    /* Declaration ?? */
+    if( match("{")  == 0 ) {
+      symname(m);
+      addglb(m, CSTRUCT, CINT, STRUCT );
+      nl();
+      return;
+    }
+    
+    if(currfn[IDENT]!=FUNCTION)multidef(n);
+      /* already VARIABLE by that NAME */
+    else if(currfn[OFFSET]==FUNCTION)multidef(n);
+      /* already FUNCTION by that NAME */
+    else currfn[OFFSET]=FUNCTION;
+      /* otherwise we have what was earlier*/
+      /*  assumed to be a FUNCTION */
+  } else {
+    /* if not in table, define as a FUNCTION now */
+    currfn=addglb(n,STRUCT,CINT,STRUCT);
+  }
+
+  toconsole();          /* gtf 7/16/80 */
+  /*outstr("====== "); outstr(currfn+NAME); outstr("()"); nl();*/
+  tofile();
+
+  /* we had better see open paren for args... */
+  if(match("{")==0)error("missing open { ");
+  ol(".text");
+  ol(".align 16");
+  outasm(".globl ");outname(n);nl();
+  ot(".TYPE");tab();outname(n);outasm(",@object");nl();
+  outname(n);col();nl();  /* print FUNCTION NAME */
+  argstk=0;    /* init arg count */
+
+  locptr=STARTLOC;  /* "clear" local symbol table*/
+  Zsp=0;      /* preset stack ptr */
+
+ 
+  /* Parse twice, once for arg count so second pass we can pass proper 
+     stack offsets in emitted asm code - SA */ 
+  tidx=lptr;
+  blanks();
+  
+  /* Assume K&R style  - SA */
+  kandr = 1;
+  /* Record stack depth based on # of parameters */
+  argtop = argstk;
+
+  /* Refill buffer */
+  blanks();
+  /* "clear" local symbol table*/ 
+  locptr=STARTLOC; 
+  Zsp=0;      /* preset stack ptr */
+  argtop=argstk;
+  while( match("}") == 0 )  {
+    /* now let user declare what TYPEs of things */
+    field_offset += 4;
+    argstk += 4;
+    if(amatch("char",4)){getfield(CCHAR, currfn, field_offset);ns();}
+    else if(amatch("int",3)){getfield(CINT, currfn, field_offset);ns();}
+    else{error("wrong number args");break;}
+  }
+  ns();
+
+  ol("pushl %ebp");
+  ol("movl %esp, %ebp");
+  Zsp=0;      /* reset stack ptr again */
+  locptr=STARTLOC;  /* deallocate all locals */
+  infunc=0;    /* not in fn. any more    gtf 7/2/80 */
+}
+
 /*          */
 /*  Begin a FUNCTION    */
 /*          */
@@ -762,6 +856,27 @@ newfunc() {
   locptr=STARTLOC;  /* deallocate all locals */
   infunc=0;    /* not in fn. any more    gtf 7/2/80 */
   }
+
+/* T=Type, sidx=Struct poitner, Offset =offseti n struct */
+getfield(t,sidx, offset) {
+  char n[NAMESIZE], c; int j;
+
+  if(match("*"))j=POINTER;
+  else j=VARIABLE;
+  if(symname(n)==0) illname();
+  if(findloc(n))multidef(n);
+  if(match("["))  {
+    /* Skip stuff between [ ] */
+    while(inbyte()!=']')  {
+      if(endst())break;
+    }
+    j=POINTER;
+    /* add entry as POINTER */
+  }
+  addloc(n,j,t,8+argtop-argstk);
+  if(endst())return;
+}
+
 /*          */
 /*  Declare argument TYPEs    */
 /*          */
@@ -817,6 +932,8 @@ statement()
     {declloc(CCHAR);ns();}
   else if(amatch("int",3))
     {declloc(CINT);ns();}
+  else if(amatch("struct",6))
+    {newstruct();}
   else if(match("{"))compound();
   else if(amatch("if",2))
     {doif();lastst=STIF;}
@@ -1176,7 +1293,7 @@ pl(str)
   char *str;
 {  int k;
   k=0;
-  putchar(eol);
+  putchar(EOL);
   while(str[k])putchar(str[k++]);
 }
 addwhile(ptr)
@@ -1236,7 +1353,7 @@ insline()
     if((unit=input2)==0)unit=input;
     kill();
     while((k=getc(unit))>0)
-      {if((k==eol)|(lptr>=LINEMAX))break;
+      {if((k==EOL)|(lptr>=LINEMAX))break;
       line[lptr++]=k;
       }
     line[lptr]=0;  /* append null */
@@ -1436,10 +1553,9 @@ char *ptr;
 {
   while(outbyte1(*ptr++));
 }
-nl(){outbyte(eol);}
-nl1(){outbyte1(eol);}
+nl(){outbyte(EOL);}
+nl1(){outbyte1(EOL);}
 tab(){outbyte(9);}
-tab1(){outbyte1(9);}
 col(){outbyte(58);}
 col1(){outbyte1(58);}
 comma(){outbyte(',');}
@@ -1639,13 +1755,13 @@ heir1(lval)
 {
   int k,lval2[2];
   k=heir2(lval);
-  if (match("="))
-    {if(k==0){needlval();return 0;}
+  if (match("=")) {
+    if(k==0){needlval();return 0;}
     if (lval[1])zpush();
     if(heir1(lval2))rvalue(lval2);
     store(lval);
     return 0;
-    }
+  }
   else return k;
 }
 heir2(lval)

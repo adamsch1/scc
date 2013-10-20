@@ -13,6 +13,7 @@ end;
 
 begin 
   lex(50,50);
+  ! x;
   x := data[3];
   ! x;
 end.

@@ -1,13 +1,16 @@
 var x, arr[10];
 
-procedure foo ( z[] )
-var y;
+
+procedure foo()
 begin
-  z[0] := 5;
 end;
 
-begin 
-  foo(arr);
-  x := arr[0];
-  ! x;
+begin
+  x := 1;
+  while x < 100 do begin x := x + 1;  end
+  !x;
+  while x > 0  do begin x := x - 1;  end
+  !x;
+  while x < 1  do begin x := x - 1;  end
+  !x;
 end.

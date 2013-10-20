@@ -1,12 +1,12 @@
 var x, arr[10];
 
-procedure foo ( z[] )
+procedure foo ( b, c )
 begin
-  z[0] := 5;
+  arr[3] := b + 61 + c;
 end;
 
 begin 
-  foo(arr);
-  x := arr[0];
+  foo(50,50);
+  x := arr[3];
   ! x;
 end.

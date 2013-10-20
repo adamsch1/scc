@@ -1,6 +1,22 @@
 
 
+struct foo {
+  int a;
+  int b;
+  char *c;
+};
+
 empty() {
+}
+
+gcd( int x, int y ) {
+  if( x == y ) {
+    return x;
+  }else if( x < y ) {
+    return gcd(x,y-x);
+  } else {
+    return gcd(x-y,y);
+  }
 }
 
 addglb(sname,id,typ,value)
@@ -35,11 +51,26 @@ eddie( char a, int b ) {
   printf("B: %c %d\n", a, b );
 }
 
-main() {
+char buffer[100];
 
+herbert( a ) char *a; {
+  int k;
+
+  k = 0;
+  while( a[k] ) { 
+    putchar( a[k] );
+    k++;
+  }
+}
+
+main() {
+  char b;
   int a;
 
   empty();
+
+  a = gcd(200,100);
+  printf("GCD: %d\n",a);
   addglb("dude",'b', 'c',11);
   dude(5);
   dude2(5,6);
@@ -47,4 +78,6 @@ main() {
   carl(6,7);
   dan('B');
   eddie('C', 69);
+
+  herbert( "rob\n" );
 }

@@ -1,16 +1,9 @@
-
-int y;
-
-square() {
-  int x;
-  x = 10000000;
-  while( y < x ) {
-    y = y + 1;
-  }
-}
+int x,y;
 
 main() {
-  y = 1;
-  square();
-  printf("%d\n",y);
+  int g;
+  g = 5;
+  y = 3;
+  x = 65 * y + x;
+  printf("%d\n",x);
 }
