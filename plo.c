@@ -249,17 +249,16 @@ void factor(void) {
       if( sym == lparen ) { /* Call */
           docall(p); 
           return;
+      } else {
+        getref(p);
+        getoffset(p);
       }
- 
-      getref(p);
-      getoffset(p);
-     
     } else if (accept(number)) {
       printf("\tmovl $%d, %%eax\n", num );
         ;
     } else if (accept(lparen)) {
-        expression();
-        expect(rparen);
+      expression();
+      expect(rparen);
     } else if ( sym == quotesym ) {
        printf("\tmovl $cc1+%d, %%eax\n", litptr );
        while( ch != '"' ) {
