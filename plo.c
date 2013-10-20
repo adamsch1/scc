@@ -237,11 +237,14 @@ void getref( struct sym_t *p ) {
 
 void getoffset( struct sym_t *p ) {
   if( p->isarray == ARRAY ) {
+    // Expect address of array in edx
+    printf("\tpushl %%eax\n");
     expect(ob);
     expression();
     if( p->type == INT ) printf("\tsall $2, %%eax\n"); /* Mul by 4 */
     printf("\tpopl %%edx\n");
     printf("\taddl %%edx, %%eax\n");
+    // Calculate memory offset back in %%eax
     printf("\tpushl %%eax\n");
     expect(cb);
   } 
