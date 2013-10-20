@@ -228,7 +228,7 @@ void getref( struct sym_t *p ) {
     // Globals are just symbols
     if( p->isarray == ARRAY )  {
       // Global array - copy address of array
-      printf("\tmovl $%s, %%eax\n", p->name ); 
+      printf("\tmovl %s, %%eax\n", p->name ); 
       printf("\tpushl %%eax\n");
       expect(ob);
       expression();
@@ -236,7 +236,8 @@ void getref( struct sym_t *p ) {
       printf("\tpopl %%edx\n");
       printf("\taddl %%edx, %%eax\n");
       // Move value at calculated offset into eax
-      printf("\tmovl (%%eax), %%eax\n");
+      if( p->type == INT ) printf("\tmovl (%%eax), %%eax\n");
+      if( p->type == CHAR ) printf("\tmovsbl (%%eax), %%eax\n");
       expect(cb);
     } else {
       // Global non pointer - just copy value
@@ -358,6 +359,7 @@ void docall( struct sym_t *p) {
 void statement(void) {
     struct sym_t *p;
     Symbol tsym;
+    int array_assign = 1;
     if (accept(ident)) {
         p = look(id);
 
@@ -370,14 +372,14 @@ void statement(void) {
           expect(ob);
           expression();
           printf("\tpushl %%eax\n"); // Array index for lval 
-          expect(cb);
+          expect(cb); array_assign=0;
         }
 
         expect(becomes);
         expression(); // Calculate rval ends up in eax
 
         if( p->level == 0 ) {
-          if( p->isarray == ARRAY ) {
+          if( p->isarray == ARRAY  && array_assign == 0 ) {
             printf("\tpopl %%edx\n"); // Array index from lval above
             printf("\tpushl %%eax\n"); // save the rval
 
