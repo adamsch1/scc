@@ -228,7 +228,6 @@ void getref( struct sym_t *p ) {
       printf("\tmovl $%s, %%eax\n", p->name ); 
     else
       printf("\tmovl %s, %%eax\n", p->name ); 
-    printf("\tpushl %%eax\n");
   }
 }
 
