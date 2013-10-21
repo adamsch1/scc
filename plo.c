@@ -465,7 +465,7 @@ void block(void) {
     int zsp = 0;
     struct sym_t *p;
     int type = INT; 
-    int argstart=0,n, temp;
+    int argstart=0,n,j, temp;
     if (accept(constsym)) {
         do {
             expect(ident);
@@ -541,12 +541,12 @@ void block(void) {
               }
             } while( accept(comma));
             // Reverse args 
-            n = argstart;
-            argstart = n + (table_count - argstart)/2;
-            while( n < argstart ) {
-              temp = table[n].zsp;
-              table[n].zsp = table[table_count + n-argstart].zsp;
-              table[table_count+n-argstart].zsp = temp; 
+            j = (table_count - argstart) / 2 ;
+            n = 0;
+            while( n <j ) {
+              temp = table[argstart+n].zsp;
+              table[argstart+n].zsp = table[table_count-n-1].zsp;
+              table[table_count-n-1].zsp = temp; 
               n = n + 1;
             } 
         }
