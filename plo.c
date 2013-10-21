@@ -465,6 +465,7 @@ void block(void) {
     int zsp = 0;
     struct sym_t *p;
     int type = INT; 
+    int argstart=0,n, temp;
     if (accept(constsym)) {
         do {
             expect(ident);
@@ -515,6 +516,7 @@ void block(void) {
         function_header(id);
         expect(lparen);
         if( sym != rparen ) {
+            argstart = table_count;
             /* Looks like they are specifying arguments */
             zsp = 4;
             do {
@@ -538,6 +540,15 @@ void block(void) {
                 p->isarray = ARRAY;
               }
             } while( accept(comma));
+            // Reverse args 
+            n = argstart;
+            argstart = n + (table_count - argstart)/2;
+            while( n < argstart ) {
+              temp = table[n].zsp;
+              table[n].zsp = table[table_count + n-argstart].zsp;
+              table[table_count+n-argstart].zsp = temp; 
+              n = n + 1;
+            } 
         }
         expect(rparen);
         block();
