@@ -7,7 +7,7 @@ typedef enum {ident, number, lparen, rparen, times, slash, plus,
     minus, eql, neq, lss, leq, gtr, geq, callsym, beginsym, semicolon,
     endsym, ifsym, whilesym, becomes, thensym, dosym, constsym, comma,
     varsym, procsym, period, oddsym, colon, bang, ob, cb, charsym,
-    quotesym } Symbol;
+    quotesym, andsym } Symbol;
 
 struct _rw {
   char *name;
@@ -183,6 +183,9 @@ int lex() {
       } else if( ch == '>' ) {
         if( gch() == '=' ) return geq;
         return gtr;
+      } else if( ch == '&' ) {
+        ch = getchar();
+         return andsym;
       } else {
       if( ch == ')' ) { ch = getchar(); return rparen;  }
       if( ch == ';' ) { ch = getchar(); return semicolon;  }
@@ -271,6 +274,8 @@ void factor(void) {
       }
     } else if (accept(number)) {
       printf("\tmovl $%d, %%eax\n", num );
+    } else if (accept(andsym)) {
+      expression();
     } else if (accept(lparen)) {
       expression();
       expect(rparen);
@@ -338,7 +343,15 @@ void condition(void) {
         expression();
     } else {
         expression();
-        if (sym == eql || sym == neq || sym == lss || sym == leq || sym == gtr || sym == geq) {
+        if (sym == andsym ) {
+          tsym = sym;
+          printf("\tpushl %%eax\n");
+          getsym();
+          expression();
+          printf("\tpopl %%edx\n");
+          printf("\tandl %%edx, %%eax\n");
+        } 
+        else if (sym == eql || sym == neq || sym == lss || sym == leq || sym == gtr || sym == geq) {
             tsym = sym;
             printf("\tpushl %%eax\n");
             getsym();
