@@ -92,10 +92,10 @@ void dump()  {
     }
   }
  
-  printf("\t.byte 37,100,10,0\n");
   while( table_count-- > 0 ) {
     if( !table[table_count].constant && !table[table_count].isfunc ) printf("\t.comm %s,%d,%d\n", table[ table_count ].name, table[table_count].size, table[table_count].type == CHAR ? 1 : 4  );
   }
+  printf("d:\n\t.byte 37,100,10,0\n");
 }
 
 struct sym_t * look( const char *name ) {
@@ -233,6 +233,7 @@ void getref( struct sym_t *p ) {
         printf("\tmovl %s, %%eax\n", p->name ); 
       else
         printf("\tmovl $%s, %%eax\n", p->name ); 
+      if( sym == ob )  {
       printf("\tpushl %%eax\n");
       expect(ob);
       expression();
@@ -242,7 +243,7 @@ void getref( struct sym_t *p ) {
       // Move value at calculated offset into eax
       if( p->type == INT ) printf("\tmovl (%%eax), %%eax\n");
       if( p->type == CHAR ) printf("\tmovsbl (%%eax), %%eax\n");
-      expect(cb);
+      expect(cb); }
     } else {
       // Global non pointer - just copy value
       printf("\tmovl %s, %%eax\n", p->name ); 
@@ -411,7 +412,7 @@ void statement(void) {
         p = look(id);
         printf("\tmovl %s, %%eax\n", p->name );
         printf("\tpushl %%eax\n");
-        printf("\tmovl $cc1+%d, %%eax\n", litptr == 0 ? litptr : litptr + 1);
+        printf("\tmovl $d, %%eax\n");
         printf("\tpushl %%eax\n");
         printf("\tcall printf\n");
         printf("\taddl $8, %%esp\n"); 
