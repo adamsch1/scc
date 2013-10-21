@@ -66,7 +66,7 @@ void error2( const char *msg ) {
 
 void cleansym() {
   if( table_count > 0 ) {
-    while( table_count > 0 && table[ table_count-1 ].level > level-1 ) {
+    while( table_count > 0 && table[table_count-1].isfunc == 0 && table[ table_count-1 ].level > level-1 ) {
       table_count--;
     }
   }
@@ -282,6 +282,7 @@ void factor(void) {
          ch = getchar();
        }
        litpool[litptr] = 0;
+       litptr++;
        accept(quotesym);
        accept(quotesym);
        accept(semicolon);
