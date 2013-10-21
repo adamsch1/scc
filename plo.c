@@ -221,15 +221,18 @@ int expect(Symbol s) {
 
 // Get address of symbol and aset into eax
 void getref( struct sym_t *p ) {
-  if( p->level > 0 ) {
+  if( 0 && p->level > 0 ) {
     // Locals are stack offsets
     printf("\tleal %d(%%ebp), %%eax\n", p->zsp ); 
     printf("\tmovl (%%eax), %%eax\n") ;
   } else {
     // Globals are just symbols
     if( p->isarray == ARRAY )  {
-      // Global array - copy address of array
-      if( p->ispointer ) 
+      if( p->level > 0 ) {
+        printf("\tleal %d(%%ebp), %%eax\n", p->zsp ); 
+        printf("\tmovl (%%eax), %%eax\n") ;
+      } else if( p->ispointer )
+        // Global array - copy address of array
         printf("\tmovl %s, %%eax\n", p->name ); 
       else
         printf("\tmovl $%s, %%eax\n", p->name ); 
@@ -245,8 +248,13 @@ void getref( struct sym_t *p ) {
       if( p->type == CHAR ) printf("\tmovsbl (%%eax), %%eax\n");
       expect(cb); }
     } else {
-      // Global non pointer - just copy value
-      printf("\tmovl %s, %%eax\n", p->name ); 
+      if( p->level > 0 ) {
+        printf("\tleal %d(%%ebp), %%eax\n", p->zsp ); 
+        printf("\tmovl (%%eax), %%eax\n") ;
+      } else {
+        // Global non pointer - just copy value
+        printf("\tmovl %s, %%eax\n", p->name ); 
+      }
     }
   }
 }
@@ -362,7 +370,7 @@ void docall( struct sym_t *p) {
 }
 
 void statement(void) {
-    struct sym_t *p;
+    struct sym_t *p=0;
     Symbol tsym;
     if (accept(ident)) {
         p = look(id);
