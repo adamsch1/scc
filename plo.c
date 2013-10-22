@@ -305,7 +305,7 @@ void term3(void) {
         tsym = sym;
         printf("\tpushl %%eax\n");
         getsym();
-        expression();
+        factor();
         printf("\tpopl %%edx\n");
         printf("\tcmpl %%eax, %%edx\n");
         if( tsym == eql ) printf("\tsete %%al\n");
@@ -378,34 +378,6 @@ void condition(void) {
         expression();
     } else {
         expression();
-        if ( 0 && sym == andsym || sym == orsym ) {
-          tsym = sym;
-          printf("\tpushl %%eax\n");
-          getsym();
-          expression();
-          printf("\tpopl %%edx\n");
-          if( tsym == andsym ) printf("\tandl %%edx, %%eax\n");
-          else printf("\torl %%edx, %%eax\n");
-        } 
-        /*else if ( 0 && sym == eql || sym == neq || sym == lss || sym == leq || sym == gtr || sym == geq) {
-            tsym = sym;
-            printf("\tpushl %%eax\n");
-            getsym();
-            expression();
-            printf("\tpopl %%edx\n");
-            printf("\tcmpl %%eax, %%edx\n");
-            if( tsym == eql ) printf("\tsete %%al\n");
-            else if( tsym == neq ) printf("\tsetne %%al\n");
-            else if( tsym == lss ) printf("\tsetl  %%al\n");
-            else if( tsym == leq ) printf("\tsetle %%al\n");
-            else if( tsym == gtr ) printf("\tsetg  %%al\n");
-            else if( tsym == geq ) printf("\tsetge %%al\n");
-            printf("\tmovzbl %%al, %%eax\n");
-
-        } else {
-            //error2("condition: invalid operator");
-            //getsym();
-        }*/
     }
 }
 
