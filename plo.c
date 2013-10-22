@@ -86,10 +86,14 @@ void dump()  {
         printf("\n");
         break;
       }
-      printf(",");
+      if( j != 1 ) printf(",");
       k++;
       j--;
     }
+      if( j==0 || k >= litptr ) {
+        printf("\n");
+        break;
+      }
   }
  
   while( table_count-- > 0 ) {
@@ -273,8 +277,6 @@ void factor(void) {
       }
     } else if (accept(number)) {
       printf("\tmovl $%d, %%eax\n", num );
-    } else if (accept(andsym)) {
-      expression();
     } else if (accept(lparen)) {
       expression();
       expect(rparen);
@@ -295,15 +297,49 @@ void factor(void) {
         //getsym();
     }
 }
+
+void term3(void) {
+    Symbol tsym; 
+    factor();
+    while (sym == eql || sym == neq || sym == lss || sym == leq || sym == gtr || sym == geq ) {
+        tsym = sym;
+        printf("\tpushl %%eax\n");
+        getsym();
+        expression();
+        printf("\tpopl %%edx\n");
+        printf("\tcmpl %%eax, %%edx\n");
+        if( tsym == eql ) printf("\tsete %%al\n");
+        else if( tsym == neq ) printf("\tsetne %%al\n");
+        else if( tsym == lss ) printf("\tsetl  %%al\n");
+        else if( tsym == leq ) printf("\tsetle %%al\n");
+        else if( tsym == gtr ) printf("\tsetg  %%al\n");
+        else if( tsym == geq ) printf("\tsetge %%al\n");
+        printf("\tmovzbl %%al, %%eax\n");
+    }
+}
+
+void term2(void) {
+    Symbol tsym; 
+    term3();
+    while (sym == andsym || sym == orsym) {
+        tsym = sym;
+        printf("\tpushl %%eax\n");
+        getsym();
+        term3();
+        printf("\tpopl %%edx\n");
+        if( tsym == andsym ) printf("\tandl %%edx, %%eax\n");
+        else printf("\torl %%edx, %%eax\n");
+    }
+}
  
 void term(void) {
     Symbol tsym; 
-    factor();
+    term2();
     while (sym == times || sym == slash) {
         tsym = sym;
         printf("\tpushl %%eax\n");
         getsym();
-        factor();
+        term2();
         printf("\tpopl %%edx\n");
         if( tsym == times ) {
           printf("\timull %%edx\n");
@@ -342,7 +378,7 @@ void condition(void) {
         expression();
     } else {
         expression();
-        if (sym == andsym || sym == orsym ) {
+        if ( 0 && sym == andsym || sym == orsym ) {
           tsym = sym;
           printf("\tpushl %%eax\n");
           getsym();
@@ -351,7 +387,7 @@ void condition(void) {
           if( tsym == andsym ) printf("\tandl %%edx, %%eax\n");
           else printf("\torl %%edx, %%eax\n");
         } 
-        else if (sym == eql || sym == neq || sym == lss || sym == leq || sym == gtr || sym == geq) {
+        /*else if ( 0 && sym == eql || sym == neq || sym == lss || sym == leq || sym == gtr || sym == geq) {
             tsym = sym;
             printf("\tpushl %%eax\n");
             getsym();
@@ -367,9 +403,9 @@ void condition(void) {
             printf("\tmovzbl %%al, %%eax\n");
 
         } else {
-            error2("condition: invalid operator");
-            getsym();
-        }
+            //error2("condition: invalid operator");
+            //getsym();
+        }*/
     }
 }
 
